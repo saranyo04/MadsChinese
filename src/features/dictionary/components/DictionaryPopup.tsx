@@ -1,36 +1,84 @@
+import { useLayoutEffect, useRef, useState } from "react";
+
 import type { WordSearchResult } from "../types/dictionary.types";
 
 type DictionaryPopupProps = {
   result: WordSearchResult;
-  x: number;
-  y: number;
-  containerRect: DOMRect;
+  anchorRect: PopupRect;
+  containerRect: PopupRect;
 };
 
-const popupHeight = 120;
-const popupWidth = 320;
-const cursorGap = 12;
+type PopupRect = {
+  bottom: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  width: number;
+};
+
+type PopupSize = {
+  height: number;
+  width: number;
+};
+
+const popupGap = 8;
+const boundaryPadding = 8;
 
 export function DictionaryPopup({
+  anchorRect,
   result,
-  x,
-  y,
   containerRect,
 }: DictionaryPopupProps) {
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [popupSize, setPopupSize] = useState<PopupSize | null>(null);
   const entries = result.entries.slice(0, 3);
-  const showAbove = y > popupHeight + cursorGap;
-  const left = Math.min(
-    Math.max(x - containerRect.left + cursorGap, 8),
-    Math.max(containerRect.width - popupWidth - 8, 8),
+
+  useLayoutEffect(() => {
+    if (!popupRef.current) {
+      return;
+    }
+
+    const nextSize = {
+      height: popupRef.current.offsetHeight,
+      width: popupRef.current.offsetWidth,
+    };
+
+    setPopupSize((currentSize) => {
+      if (
+        currentSize?.height === nextSize.height &&
+        currentSize.width === nextSize.width
+      ) {
+        return currentSize;
+      }
+
+      return nextSize;
+    });
+  }, [result]);
+
+  const width = popupSize?.width ?? 0;
+  const height = popupSize?.height ?? 0;
+  const left = clamp(
+    anchorRect.left - containerRect.left,
+    boundaryPadding,
+    containerRect.width - width - boundaryPadding,
   );
-  const top = showAbove
-    ? y - containerRect.top - popupHeight - cursorGap
-    : y - containerRect.top + cursorGap;
+  const spaceAbove = anchorRect.top - containerRect.top;
+  const showAbove = popupSize ? spaceAbove >= height + popupGap : true;
+  const preferredTop = showAbove
+    ? anchorRect.top - containerRect.top - height - popupGap
+    : anchorRect.bottom - containerRect.top + popupGap;
+  const top = clamp(
+    preferredTop,
+    boundaryPadding,
+    containerRect.height - height - boundaryPadding,
+  );
 
   return (
     <div
-      className="absolute z-20 max-w-[320px] rounded border border-stone-300 bg-[#FFFFC8] px-3 py-2 text-stone-950 shadow-md"
-      style={{ left, top }}
+      ref={popupRef}
+      className="pointer-events-none absolute z-20 max-w-[320px] rounded border border-stone-300 bg-[#FFFFC8] px-3 py-2 text-stone-950 shadow-md"
+      style={{ left, top, visibility: popupSize ? "visible" : "hidden" }}
     >
       <div>
         {entries.map((entry) => (
@@ -64,6 +112,14 @@ export function DictionaryPopup({
       ) : null}
     </div>
   );
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (max < min) {
+    return min;
+  }
+
+  return Math.min(Math.max(value, min), max);
 }
 
 function formatChinese(traditional: string, simplified: string) {

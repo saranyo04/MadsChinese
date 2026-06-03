@@ -5,7 +5,7 @@ import type {
 
 type KeywordMap = Record<string, number>;
 
-export class ZhongwenDictionary {
+export class DictionaryLookup {
   private cache: Record<string, string[]> = {};
 
   constructor(
@@ -55,7 +55,7 @@ export class ZhongwenDictionary {
       let indexEntry = this.cache[word];
 
       if (!indexEntry) {
-        const foundEntry = ZhongwenDictionary.find(`${word},`, this.wordIndex);
+        const foundEntry = DictionaryLookup.find(`${word},`, this.wordIndex);
         if (!foundEntry) {
           this.cache[word] = [];
           continue;

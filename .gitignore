@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+build/
+out/
 src-tauri/target/
 
 # Local reference source
@@ -19,19 +21,38 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+src-tauri/tauri.conf.local.json
 
 # Caches
 .vite/
 .turbo/
 .cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# Test and coverage output
+coverage/
+playwright-report/
+test-results/
 
 # OS files
 .DS_Store
+._*
 Thumbs.db
 desktop.ini
+
+# Tauri backup files
+src-tauri/**/*.rs.bk
 
 # Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Tauri updater artifacts (future)
+latest.json
+
+# Generated package artifacts
+*.tgz

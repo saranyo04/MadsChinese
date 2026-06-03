@@ -1,30 +1,33 @@
 import { useEffect, useState } from "react";
 
-import { ZhongwenDictionary } from "../lib/lookup";
 import type { WordSearchResult } from "../types/dictionary.types";
+import type {
+  DictionaryWorkerRequest,
+  DictionaryWorkerResponse,
+} from "../types/dictionary-worker.types";
 
-type KeywordMap = Record<string, number>;
+type PendingRequest<T> = {
+  reject: (error: Error) => void;
+  resolve: (value: T) => void;
+};
 
-let dictionaryPromise: Promise<ZhongwenDictionary> | null = null;
-let loadedDictionary: ZhongwenDictionary | null = null;
+let worker: Worker | null = null;
+let requestId = 0;
+let isLoaded = false;
+let loadPromise: Promise<void> | null = null;
+const pendingRequests = new Map<number, PendingRequest<unknown>>();
 
 export function useDictionary() {
-  const [dictionary, setDictionary] = useState<ZhongwenDictionary | null>(
-    loadedDictionary,
-  );
-  const [loading, setLoading] = useState(!loadedDictionary);
+  const [loading, setLoading] = useState(!isLoaded);
 
   useEffect(() => {
     let isMounted = true;
 
     loadDictionary()
-      .then((loaded) => {
-        if (isMounted) {
-          setDictionary(loaded);
-          setLoading(false);
-        }
+      .catch((error) => {
+        console.error("Dictionary worker startup failed", error);
       })
-      .catch(() => {
+      .finally(() => {
         if (isMounted) {
           setLoading(false);
         }
@@ -37,67 +40,109 @@ export function useDictionary() {
 
   return {
     loading,
-    wordSearch(text: string): WordSearchResult | null {
-      return dictionary?.wordSearch(text) ?? null;
+    wordSearch(text: string): Promise<WordSearchResult | null> {
+      if (!isLoaded) {
+        return Promise.resolve(null);
+      }
+
+      return searchDictionary(text);
     },
   };
 }
 
 function loadDictionary() {
-  if (loadedDictionary) {
-    return Promise.resolve(loadedDictionary);
+  if (isLoaded) {
+    return Promise.resolve();
   }
 
-  if (!dictionaryPromise) {
-    dictionaryPromise = loadDictionaryData().then(
-      ([wordDict, wordIndex, grammarKeywords, vocabKeywords]) => {
-        loadedDictionary = new ZhongwenDictionary(
-          wordDict,
-          wordIndex,
-          grammarKeywords,
-          vocabKeywords,
-        );
-
-        return loadedDictionary;
-      },
-    );
+  if (!loadPromise) {
+    loadPromise = sendWorkerRequest<void>({
+      type: "load",
+      requestId: nextRequestId(),
+    })
+      .then(() => {
+        isLoaded = true;
+      });
   }
 
-  return dictionaryPromise;
+  return loadPromise;
 }
 
-async function loadDictionaryData(): Promise<
-  [string, string, KeywordMap, KeywordMap]
-> {
-  const [wordDict, wordIndex, grammarKeywords, vocabKeywords] =
-    await Promise.all([
-      fetchDictionaryText("cedict_ts.u8"),
-      fetchDictionaryText("cedict.idx"),
-      fetchDictionaryJson("grammarKeywordsMin.json"),
-      fetchDictionaryJson("vocabularyKeywordsMin.json"),
-    ]);
-
-  return [wordDict, wordIndex, grammarKeywords, vocabKeywords];
+function searchDictionary(text: string) {
+  return sendWorkerRequest<WordSearchResult | null>({
+    type: "search",
+    requestId: nextRequestId(),
+    text,
+  });
 }
 
-function dictionaryAssetPath(fileName: string) {
-  return import.meta.env.DEV ? `/${fileName}` : `./${fileName}`;
+function sendWorkerRequest<T>(request: DictionaryWorkerRequest) {
+  return new Promise<T>((resolve, reject) => {
+    pendingRequests.set(request.requestId, {
+      resolve: resolve as PendingRequest<unknown>["resolve"],
+      reject,
+    });
+
+    try {
+      getWorker().postMessage(request);
+    } catch (error) {
+      pendingRequests.delete(request.requestId);
+      console.error("Dictionary worker postMessage failed", error);
+      reject(error instanceof Error ? error : new Error("postMessage failed"));
+    }
+  });
 }
 
-async function fetchDictionaryText(fileName: string) {
-  const response = await fetch(dictionaryAssetPath(fileName));
-  if (!response.ok) {
-    throw new Error(`Unable to load ${fileName}`);
+function getWorker() {
+  if (!worker) {
+    try {
+      worker = new Worker(new URL("./dictionary.worker.ts", import.meta.url), {
+        type: "module",
+      });
+    } catch (error) {
+      console.error("Dictionary worker initialization failed", error);
+      throw error;
+    }
+    worker.onmessage = handleWorkerMessage;
+    worker.onerror = (event) => {
+      console.error("Dictionary worker error", event);
+    };
+    worker.onmessageerror = (event) => {
+      console.error("Dictionary worker message error", event);
+    };
   }
 
-  return response.text();
+  return worker;
 }
 
-async function fetchDictionaryJson(fileName: string): Promise<KeywordMap> {
-  const response = await fetch(dictionaryAssetPath(fileName));
-  if (!response.ok) {
-    throw new Error(`Unable to load ${fileName}`);
-  }
+function handleWorkerMessage(event: MessageEvent<DictionaryWorkerResponse>) {
+  try {
+    const response = event.data;
+    const pendingRequest = pendingRequests.get(response.requestId);
+    if (!pendingRequest) {
+      return;
+    }
 
-  return response.json();
+    pendingRequests.delete(response.requestId);
+
+    if (response.type === "error") {
+      console.error("Dictionary worker request failed", response.error);
+      pendingRequest.reject(new Error(response.error));
+      return;
+    }
+
+    if (response.type === "loaded") {
+      pendingRequest.resolve(undefined);
+      return;
+    }
+
+    pendingRequest.resolve(response.result);
+  } catch (error) {
+    console.error("Dictionary worker message handling failed", error);
+  }
+}
+
+function nextRequestId() {
+  requestId += 1;
+  return requestId;
 }
