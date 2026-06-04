@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { X } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 
 import { Button } from "../../components/ui/button";
 import {
@@ -31,7 +36,25 @@ type PopupRect = {
   width: number;
 };
 
-export function TextWorkspace() {
+type TextWorkspaceProps = {
+  editorContent: string;
+  noteTitle: string;
+  onEditorContentChange: (content: string) => void;
+  onNewNote: () => void;
+  onNoteTitleChange: (title: string) => void;
+  onSave: () => Promise<void>;
+  onSaveAsNew: () => Promise<void>;
+};
+
+export function TextWorkspace({
+  editorContent,
+  noteTitle,
+  onEditorContentChange,
+  onNewNote,
+  onNoteTitleChange,
+  onSave,
+  onSaveAsNew,
+}: TextWorkspaceProps) {
   const [popup, setPopup] = useState<PopupState | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -50,6 +73,21 @@ export function TextWorkspace() {
   useEffect(() => {
     editorRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || editor.innerText === editorContent) {
+      return;
+    }
+
+    if (editorContent) {
+      editor.innerText = editorContent;
+    } else {
+      editor.innerHTML = "";
+    }
+
+    dismissPopup();
+  }, [editorContent]);
 
   useEffect(() => {
     return () => {
@@ -71,12 +109,22 @@ export function TextWorkspace() {
     };
   }, []);
 
-  function clearText() {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = "";
+  function handleEditorInput() {
+    onEditorContentChange(editorRef.current?.innerText ?? "");
+  }
+
+  function handleNewNote() {
+    onNewNote();
+    dismissPopup();
+  }
+
+  function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") {
+      return;
     }
 
-    dismissPopup();
+    event.preventDefault();
+    void onSave();
   }
 
   function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
@@ -243,6 +291,15 @@ export function TextWorkspace() {
       className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-5"
       onMouseLeave={handleMouseLeave}
     >
+      <input
+        type="text"
+        value={noteTitle}
+        onChange={(event) => onNoteTitleChange(event.target.value)}
+        onKeyDown={handleTitleKeyDown}
+        placeholder="Note title..."
+        className="h-10 shrink-0 rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-950 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-stone-300 focus:ring-2 focus:ring-stone-200/80"
+      />
+
       <div ref={workspaceRef} className="relative min-h-0 min-w-0 flex-1">
         <div
           ref={editorRef}
@@ -252,8 +309,9 @@ export function TextWorkspace() {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onInput={handleEditorInput}
           spellCheck={false}
-          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-stone-200 bg-white px-6 py-5 text-lg leading-8 text-stone-950 shadow-sm outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-400 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
+          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-stone-200 bg-white px-6 py-6 text-lg leading-8 text-stone-950 shadow outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-300 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
         />
 
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
@@ -267,10 +325,17 @@ export function TextWorkspace() {
         </div>
       </div>
 
-      <div className="flex shrink-0 justify-start">
-        <Button type="button" variant="outline" onClick={clearText}>
-          <X className="size-4" aria-hidden="true" />
-          Clear
+      <div className="flex shrink-0 items-center gap-2">
+        <Button type="button" onClick={() => void onSave()}>
+          Save
+        </Button>
+
+        <Button type="button" variant="outline" onClick={() => void onSaveAsNew()}>
+          Save as New
+        </Button>
+
+        <Button type="button" variant="outline" onClick={handleNewNote}>
+          New Note
         </Button>
       </div>
     </section>

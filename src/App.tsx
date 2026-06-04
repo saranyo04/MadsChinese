@@ -1,4 +1,4 @@
-import { TextWorkspace } from "./features/workspace/TextWorkspace";
+import { WorkspaceShell } from "./features/workspace";
 
 export function App() {
   return (
@@ -7,7 +7,7 @@ export function App() {
         <h1 className="text-lg font-semibold tracking-normal">MadsChinese</h1>
       </header>
 
-      <TextWorkspace />
+      <WorkspaceShell />
     </main>
   );
 }
