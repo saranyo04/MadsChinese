@@ -242,7 +242,7 @@ export function TextWorkspace() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         spellCheck={false}
-        className="min-h-0 flex-1 resize-none overflow-y-auto whitespace-pre-wrap rounded-md border border-stone-200 bg-white px-6 py-5 text-lg leading-8 text-stone-950 shadow-sm outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-400 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
+        className="min-h-0 min-w-0 flex-1 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-stone-200 bg-white px-6 py-5 text-lg leading-8 text-stone-950 shadow-sm outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-400 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
       />
 
       {popup ? (
@@ -330,7 +330,7 @@ function isChineseCharacter(character: string) {
 }
 
 const zwnj = /\u200c/g;
-const HORIZONTAL_TOLERANCE_PX = 10;
+const HORIZONTAL_TOLERANCE_PX = 8;
 const VERTICAL_TOLERANCE_PX = 4;
 const HOVER_GRACE_DISTANCE_PX = 2;
 
