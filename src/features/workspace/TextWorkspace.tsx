@@ -297,7 +297,7 @@ export function TextWorkspace({
         onChange={(event) => onNoteTitleChange(event.target.value)}
         onKeyDown={handleTitleKeyDown}
         placeholder="Note title..."
-        className="h-10 shrink-0 rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-950 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-stone-300 focus:ring-2 focus:ring-stone-200/80"
+        className="h-10 shrink-0 rounded-md border border-[var(--theme-border)] bg-white px-3 text-sm text-stone-950 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-[var(--theme-border-hover)] focus:ring-2 focus:ring-[var(--theme-focus-ring)]"
       />
 
       <div ref={workspaceRef} className="relative min-h-0 min-w-0 flex-1">
@@ -305,13 +305,20 @@ export function TextWorkspace({
           ref={editorRef}
           contentEditable="true"
           suppressContentEditableWarning
-          data-placeholder="Paste or type Chinese text here..."
+          data-placeholder={`Paste or type Chinese text here.
+- Hover words to see dictionary definitions
+- Save notes to access them later from the sidebar
+- You can even put a title!
+
+Shortcuts:
+- Ctrl + S → Save Note
+- Ctrl + T → New Note`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onInput={handleEditorInput}
           spellCheck={false}
-          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-stone-200 bg-white px-6 py-6 text-lg leading-8 text-stone-950 shadow outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-300 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
+          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-[var(--theme-border)] bg-white px-6 py-6 text-lg leading-8 text-stone-950 shadow outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-[var(--theme-border-hover)] focus:ring-4 focus:ring-[var(--theme-focus-ring)] placeholder:text-stone-400"
         />
 
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
