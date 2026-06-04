@@ -56,3 +56,7 @@ latest.json
 
 # Generated package artifacts
 *.tgz
+
+
+src-tauri/target/
+dist/
