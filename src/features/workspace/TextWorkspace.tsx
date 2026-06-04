@@ -15,6 +15,7 @@ type PopupState = {
 };
 
 type HoverText = {
+  hoveredCharacterRect: PopupRect;
   originalText: string;
   text: string;
   rangeNode: Text;
@@ -32,7 +33,7 @@ type PopupRect = {
 
 export function TextWorkspace() {
   const [popup, setPopup] = useState<PopupState | null>(null);
-  const sectionRef = useRef<HTMLElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const savedClientX = useRef(-1);
@@ -133,7 +134,7 @@ export function TextWorkspace() {
     }
 
     hoverTimerRef.current = window.setTimeout(async () => {
-      const containerRect = sectionRef.current?.getBoundingClientRect();
+      const containerRect = workspaceRef.current?.getBoundingClientRect();
       if (!containerRect) {
         dismissPopup();
         return;
@@ -149,20 +150,30 @@ export function TextWorkspace() {
         return;
       }
 
-      const anchorRect = highlightMatch(
+      const highlightLength = getHighlightLength(
+        hoverText.originalText,
+        result.matchLen,
+      );
+      const anchorRect = getMatchAnchorRect(
         hoverText.rangeNode,
         hoverText.rangeOffset,
-        getHighlightLength(hoverText.originalText, result.matchLen),
+        highlightLength,
+        hoverText.hoveredCharacterRect,
+      );
+      const isHighlighted = highlightMatch(
+        hoverText.rangeNode,
+        hoverText.rangeOffset,
+        highlightLength,
         hoverSelectionText,
       );
-      if (!anchorRect) {
+      if (!isHighlighted) {
         dismissPopup();
         return;
       }
 
       setPopup({
         result,
-        anchorRect: rectToObject(anchorRect),
+        anchorRect,
         containerRect: rectToObject(containerRect),
       });
     }, 50);
@@ -229,29 +240,32 @@ export function TextWorkspace() {
 
   return (
     <section
-      ref={sectionRef}
       className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-5"
       onMouseLeave={handleMouseLeave}
     >
-      <div
-        ref={editorRef}
-        contentEditable="true"
-        suppressContentEditableWarning
-        data-placeholder="Paste or type Chinese text here..."
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        spellCheck={false}
-        className="min-h-0 min-w-0 flex-1 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-stone-200 bg-white px-6 py-5 text-lg leading-8 text-stone-950 shadow-sm outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-400 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
-      />
-
-      {popup ? (
-        <DictionaryPopup
-          anchorRect={popup.anchorRect}
-          containerRect={popup.containerRect}
-          result={popup.result}
+      <div ref={workspaceRef} className="relative min-h-0 min-w-0 flex-1">
+        <div
+          ref={editorRef}
+          contentEditable="true"
+          suppressContentEditableWarning
+          data-placeholder="Paste or type Chinese text here..."
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          spellCheck={false}
+          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-stone-200 bg-white px-6 py-5 text-lg leading-8 text-stone-950 shadow-sm outline-none transition empty:before:pointer-events-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] focus:border-stone-400 focus:ring-4 focus:ring-stone-200/70 placeholder:text-stone-400"
         />
-      ) : null}
+
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
+          {popup ? (
+            <DictionaryPopup
+              anchorRect={popup.anchorRect}
+              containerRect={popup.containerRect}
+              result={popup.result}
+            />
+          ) : null}
+        </div>
+      </div>
 
       <div className="flex shrink-0 justify-start">
         <Button type="button" variant="outline" onClick={clearText}>
@@ -269,29 +283,18 @@ function getHoverTextFromRange(
   clientX: number,
   clientY: number,
 ): HoverText | null {
-  let rangeNode = range.startContainer;
-  let rangeOffset = range.startOffset;
-
-  if (rangeNode.nodeType !== Node.TEXT_NODE) {
+  const normalizedPosition = normalizeCaretPosition(
+    range,
+    root,
+    clientX,
+    clientY,
+  );
+  if (!normalizedPosition) {
     return null;
   }
 
-  const textNode = rangeNode as Text;
-  if (rangeOffset === textNode.data.length) {
-    const nextNode = findNextTextNode(root, textNode);
-    if (!nextNode) {
-      return null;
-    }
-
-    rangeNode = nextNode;
-    rangeOffset = 0;
-  }
-
-  if (rangeNode.nodeType !== Node.TEXT_NODE || !root.contains(rangeNode)) {
-    return null;
-  }
-
-  const normalizedTextNode = rangeNode as Text;
+  const normalizedTextNode = normalizedPosition.textNode;
+  const rangeOffset = normalizedPosition.offset;
   const character = getCharacterAtOffset(
     normalizedTextNode.textContent ?? "",
     rangeOffset,
@@ -307,6 +310,7 @@ function getHoverTextFromRange(
   const originalText = getText(root, normalizedTextNode, rangeOffset, 30);
 
   return {
+    hoveredCharacterRect: rectToObject(normalizedPosition.rect),
     originalText,
     text: originalText.replace(zwnj, ""),
     rangeNode: normalizedTextNode,
@@ -330,7 +334,7 @@ function isChineseCharacter(character: string) {
 }
 
 const zwnj = /\u200c/g;
-const HORIZONTAL_TOLERANCE_PX = 8;
+const HORIZONTAL_TOLERANCE_PX = 4;
 const VERTICAL_TOLERANCE_PX = 4;
 const HOVER_GRACE_DISTANCE_PX = 2;
 
@@ -340,9 +344,248 @@ function isPointOverText(
   clientX: number,
   clientY: number,
 ) {
+  return Boolean(getCharacterRectAtOffset(textNode, offset)) &&
+    isPointOverCharacter(textNode, offset, clientX, clientY);
+}
+
+function normalizeCaretPosition(
+  range: Range,
+  root: HTMLElement,
+  clientX: number,
+  clientY: number,
+) {
+  if (!root.contains(range.startContainer)) {
+    return null;
+  }
+
+  return findHoveredCharacterPosition(
+    getCaretCharacterCandidates(range, root),
+    clientX,
+    clientY,
+  );
+}
+
+type TextPosition = {
+  textNode: Text;
+  offset: number;
+};
+
+type CharacterHitCandidate = TextPosition & {
+  distance: number;
+  rect: DOMRect;
+};
+
+function getCaretCharacterCandidates(range: Range, root: HTMLElement) {
+  const textNodes = getTextNodes(root);
+  const rangeNode = range.startContainer;
+  const rangeOffset = range.startOffset;
+
+  if (rangeNode.nodeType === Node.TEXT_NODE) {
+    const textNode = rangeNode as Text;
+    const candidates: Array<TextPosition | null> = [
+      { textNode, offset: rangeOffset },
+      { textNode, offset: rangeOffset - 1 },
+    ];
+
+    if (rangeOffset <= 0) {
+      candidates.push(findPreviousCharacterPosition(textNodes, textNode));
+    }
+
+    if (rangeOffset >= textNode.data.length) {
+      candidates.push(findNextCharacterPosition(textNodes, textNode));
+    }
+
+    return uniqueValidTextPositions(candidates);
+  }
+
+  return uniqueValidTextPositions([
+    findNextCharacterPositionFromBoundary(textNodes, range),
+    findPreviousCharacterPositionFromBoundary(textNodes, range),
+  ]);
+}
+
+function getTextNodes(root: HTMLElement) {
+  const textNodes: Text[] = [];
+  const nodeIterator = document.createNodeIterator(root, NodeFilter.SHOW_TEXT);
+  let node = nodeIterator.nextNode() as Text | null;
+
+  while (node) {
+    if (node.data.length > 0) {
+      textNodes.push(node);
+    }
+
+    node = nodeIterator.nextNode() as Text | null;
+  }
+
+  return textNodes;
+}
+
+function findPreviousCharacterPosition(textNodes: Text[], textNode: Text) {
+  const index = textNodes.indexOf(textNode);
+  const previousTextNode = index > 0 ? textNodes[index - 1] : null;
+  const root = editorRefFromTextNode(textNode);
+
+  return previousTextNode && root && isSameLine(root, textNode, previousTextNode)
+    ? {
+        textNode: previousTextNode,
+        offset: previousTextNode.data.length - 1,
+      }
+    : null;
+}
+
+function findNextCharacterPosition(textNodes: Text[], textNode: Text) {
+  const index = textNodes.indexOf(textNode);
+  const nextTextNode =
+    index >= 0 && index < textNodes.length - 1 ? textNodes[index + 1] : null;
+  const root = editorRefFromTextNode(textNode);
+
+  return nextTextNode && root && isSameLine(root, textNode, nextTextNode)
+    ? { textNode: nextTextNode, offset: 0 }
+    : null;
+}
+
+function findNextCharacterPositionFromBoundary(
+  textNodes: Text[],
+  range: Range,
+) {
+  for (const textNode of textNodes) {
+    if (compareTextPointToRange(textNode, 0, range) >= 0) {
+      return { textNode, offset: 0 };
+    }
+  }
+
+  return null;
+}
+
+function findPreviousCharacterPositionFromBoundary(
+  textNodes: Text[],
+  range: Range,
+) {
+  let previousPosition: TextPosition | null = null;
+
+  for (const textNode of textNodes) {
+    if (compareTextPointToRange(textNode, textNode.data.length, range) <= 0) {
+      previousPosition = {
+        textNode,
+        offset: textNode.data.length - 1,
+      };
+    }
+  }
+
+  return previousPosition;
+}
+
+function compareTextPointToRange(textNode: Text, offset: number, range: Range) {
+  const pointRange = document.createRange();
+  pointRange.setStart(textNode, offset);
+  pointRange.collapse(true);
+  const result = pointRange.compareBoundaryPoints(Range.START_TO_START, range);
+  pointRange.detach();
+
+  return result;
+}
+
+function uniqueValidTextPositions(positions: Array<TextPosition | null>) {
+  const uniquePositions: TextPosition[] = [];
+
+  for (const position of positions) {
+    if (
+      position &&
+      position.offset >= 0 &&
+      position.offset < position.textNode.data.length &&
+      !uniquePositions.some(
+        (item) =>
+          item.textNode === position.textNode && item.offset === position.offset,
+      )
+    ) {
+      uniquePositions.push(position);
+    }
+  }
+
+  return uniquePositions;
+}
+
+function findHoveredCharacterPosition(
+  positions: TextPosition[],
+  clientX: number,
+  clientY: number,
+) {
+  let closestCandidate: CharacterHitCandidate | null = null;
+
+  for (const position of positions) {
+    const candidate = getCharacterHitCandidate(
+      position.textNode,
+      position.offset,
+      clientX,
+      clientY,
+    );
+
+    if (
+      candidate &&
+      (!closestCandidate || candidate.distance < closestCandidate.distance)
+    ) {
+      closestCandidate = candidate;
+    }
+  }
+
+  return closestCandidate;
+}
+
+function getCharacterHitCandidate(
+  textNode: Text,
+  offset: number,
+  clientX: number,
+  clientY: number,
+) {
+  if (!isPointOverCharacter(textNode, offset, clientX, clientY)) {
+    return null;
+  }
+
+  const rect = getCharacterRectAtOffset(textNode, offset);
+  if (!rect) {
+    return null;
+  }
+
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = centerX - clientX;
+  const dy = centerY - clientY;
+
+  return {
+    textNode,
+    offset,
+    distance: Math.sqrt(dx * dx + dy * dy),
+    rect,
+  };
+}
+
+function isPointOverCharacter(
+  textNode: Text,
+  offset: number,
+  clientX: number,
+  clientY: number,
+) {
+  const rect = getCharacterRectAtOffset(textNode, offset);
+  if (!rect) {
+    return false;
+  }
+
+  return (
+    clientX >= rect.left - HORIZONTAL_TOLERANCE_PX &&
+    clientX <= rect.right + HORIZONTAL_TOLERANCE_PX &&
+    clientY >= rect.top - VERTICAL_TOLERANCE_PX &&
+    clientY <= rect.bottom + VERTICAL_TOLERANCE_PX
+  );
+}
+
+function getCharacterRectAtOffset(textNode: Text, offset: number) {
+  if (offset < 0 || offset >= textNode.data.length) {
+    return null;
+  }
+
   const character = getCharacterAtOffset(textNode.data, offset);
   if (!character) {
-    return false;
+    return null;
   }
 
   const range = document.createRange();
@@ -352,14 +595,7 @@ function isPointOverText(
   const rect = range.getBoundingClientRect();
   range.detach();
 
-  return (
-    rect.width > 0 &&
-    rect.height > 0 &&
-    clientX >= rect.left - HORIZONTAL_TOLERANCE_PX &&
-    clientX <= rect.right + HORIZONTAL_TOLERANCE_PX &&
-    clientY >= rect.top - VERTICAL_TOLERANCE_PX &&
-    clientY <= rect.bottom + VERTICAL_TOLERANCE_PX
-  );
+  return rect.width > 0 && rect.height > 0 ? rect : null;
 }
 
 function getText(
@@ -379,8 +615,20 @@ function getText(
     }
 
     if (hasReachedStartNode) {
+      if (!isSameLine(root, startNode, node)) {
+        break;
+      }
+
       const startOffset = node === startNode ? offset : 0;
-      text += node.data.substring(startOffset, startOffset + maxLength - text.length);
+      text += getTextUntilHardBreak(
+        node,
+        startOffset,
+        maxLength - text.length,
+      );
+
+      if (hasHardBreakAfterOffset(node, startOffset)) {
+        break;
+      }
     }
 
     node = nodeIterator.nextNode() as Text | null;
@@ -397,22 +645,16 @@ function highlightMatch(
 ) {
   const rangeEnd = findRangeEnd(rangeStartNode, rangeStartOffset, matchLen);
   if (!rangeEnd) {
-    return null;
+    return false;
   }
 
   const range = document.createRange();
   range.setStart(rangeStartNode, rangeStartOffset);
   range.setEnd(rangeEnd.node, rangeEnd.offset);
-  const anchorRect = getFirstVisibleRangeRect(range);
-  if (!anchorRect) {
-    range.detach();
-    return null;
-  }
-
   const selection = window.getSelection();
   if (!selection) {
     range.detach();
-    return null;
+    return false;
   }
 
   if (
@@ -420,14 +662,67 @@ function highlightMatch(
     hoverSelectionText.current !== selection.toString()
   ) {
     range.detach();
-    return null;
+    return false;
   }
 
   selection.removeAllRanges();
   selection.addRange(range);
   hoverSelectionText.current = selection.toString();
 
-  return anchorRect;
+  return true;
+}
+
+function getMatchAnchorRect(
+  rangeStartNode: Text,
+  rangeStartOffset: number,
+  matchLen: number,
+  hoveredCharacterRect: PopupRect,
+) {
+  const rangeEnd = findRangeEnd(rangeStartNode, rangeStartOffset, matchLen);
+  if (!rangeEnd) {
+    return hoveredCharacterRect;
+  }
+
+  const range = document.createRange();
+  range.setStart(rangeStartNode, rangeStartOffset);
+  range.setEnd(rangeEnd.node, rangeEnd.offset);
+
+  const rects = Array.from(range.getClientRects()).filter(
+    (rect) => rect.width > 0 && rect.height > 0,
+  );
+  range.detach();
+
+  if (rects.length === 0) {
+    return hoveredCharacterRect;
+  }
+
+  const hoveredCenterX =
+    hoveredCharacterRect.left + hoveredCharacterRect.width / 2;
+  const hoveredCenterY =
+    hoveredCharacterRect.top + hoveredCharacterRect.height / 2;
+  const containingRect = rects.find(
+    (rect) =>
+      hoveredCenterX >= rect.left &&
+      hoveredCenterX <= rect.right &&
+      hoveredCenterY >= rect.top &&
+      hoveredCenterY <= rect.bottom,
+  );
+
+  if (containingRect) {
+    return rectToObject(containingRect);
+  }
+
+  const closestRect = rects.reduce((closest, rect) => {
+    const closestCenterY = closest.top + closest.height / 2;
+    const rectCenterY = rect.top + rect.height / 2;
+
+    return Math.abs(rectCenterY - hoveredCenterY) <
+      Math.abs(closestCenterY - hoveredCenterY)
+      ? rect
+      : closest;
+  });
+
+  return rectToObject(closestRect);
 }
 
 function clearSelection(hoverSelectionText: { current: string | null }) {
@@ -457,7 +752,9 @@ function findRangeEnd(startNode: Text, startOffset: number, length: number) {
   let remaining = length;
 
   while (node) {
-    const available = node.data.length - offset;
+    const lineBreakIndex = node.data.indexOf("\n", offset);
+    const available =
+      (lineBreakIndex === -1 ? node.data.length : lineBreakIndex) - offset;
     if (remaining <= available) {
       return {
         node,
@@ -465,8 +762,12 @@ function findRangeEnd(startNode: Text, startOffset: number, length: number) {
       };
     }
 
+    if (lineBreakIndex !== -1) {
+      return null;
+    }
+
     remaining -= available;
-    node = findNextTextNode(editorRefFromTextNode(startNode), node);
+    node = findNextTextNode(editorRefFromTextNode(startNode), node, startNode);
     offset = 0;
   }
 
@@ -478,7 +779,11 @@ function editorRefFromTextNode(node: Text) {
   return root instanceof HTMLElement ? root : null;
 }
 
-function findNextTextNode(root: HTMLElement | null, previous: Text) {
+function findNextTextNode(
+  root: HTMLElement | null,
+  previous: Text,
+  flowStart?: Text,
+) {
   if (!root) {
     return null;
   }
@@ -493,12 +798,44 @@ function findNextTextNode(root: HTMLElement | null, previous: Text) {
     node = nodeIterator.nextNode();
   }
 
-  return nodeIterator.nextNode() as Text | null;
+  const nextNode = nodeIterator.nextNode() as Text | null;
+  if (
+    nextNode &&
+    flowStart &&
+    (!root || !isSameLine(root, flowStart, nextNode))
+  ) {
+    return null;
+  }
+
+  return nextNode;
 }
 
-function getFirstVisibleRangeRect(range: Range) {
-  const rects = Array.from(range.getClientRects());
-  return rects.find((rect) => rect.width > 0 && rect.height > 0) ?? null;
+function isSameLine(root: HTMLElement, firstNode: Text, secondNode: Text) {
+  return getLineContainer(root, firstNode) === getLineContainer(root, secondNode);
+}
+
+function getLineContainer(root: HTMLElement, node: Text) {
+  let current: Node | null = node;
+
+  while (current?.parentNode && current.parentNode !== root) {
+    current = current.parentNode;
+  }
+
+  return current;
+}
+
+function getTextUntilHardBreak(node: Text, offset: number, maxLength: number) {
+  const lineBreakIndex = node.data.indexOf("\n", offset);
+  const endOffset =
+    lineBreakIndex === -1
+      ? offset + maxLength
+      : Math.min(lineBreakIndex, offset + maxLength);
+
+  return node.data.substring(offset, endOffset);
+}
+
+function hasHardBreakAfterOffset(node: Text, offset: number) {
+  return node.data.indexOf("\n", offset) !== -1;
 }
 
 function rectToObject(rect: DOMRect | DOMRectReadOnly): PopupRect {

@@ -58,16 +58,12 @@ export function DictionaryPopup({
 
   const width = popupSize?.width ?? 0;
   const height = popupSize?.height ?? 0;
-  const left = clamp(
-    anchorRect.left - containerRect.left,
-    boundaryPadding,
-    containerRect.width - width - boundaryPadding,
-  );
-  const spaceAbove = anchorRect.top - containerRect.top;
-  const showAbove = popupSize ? spaceAbove >= height + popupGap : true;
-  const preferredTop = showAbove
-    ? anchorRect.top - containerRect.top - height - popupGap
-    : anchorRect.bottom - containerRect.top + popupGap;
+  const left = getHorizontalPosition(anchorRect, containerRect, width);
+  const spaceBelow = containerRect.bottom - anchorRect.bottom;
+  const showBelow = popupSize ? spaceBelow >= height + popupGap : true;
+  const preferredTop = showBelow
+    ? anchorRect.bottom - containerRect.top + popupGap
+    : anchorRect.top - containerRect.top - height - popupGap;
   const top = clamp(
     preferredTop,
     boundaryPadding,
@@ -77,8 +73,12 @@ export function DictionaryPopup({
   return (
     <div
       ref={popupRef}
-      className="pointer-events-none absolute z-20 max-w-[320px] rounded border border-stone-300 bg-[#FFFFC8] px-3 py-2 text-stone-950 shadow-md"
-      style={{ left, top, visibility: popupSize ? "visible" : "hidden" }}
+      className="pointer-events-none absolute z-20 w-max max-w-[320px] rounded border border-stone-300 bg-[#FFFFC8] px-3 py-2 text-stone-950 shadow-md"
+      style={{
+        left,
+        top,
+        visibility: popupSize ? "visible" : "hidden",
+      }}
     >
       <div>
         {entries.map((entry) => (
@@ -120,6 +120,26 @@ function clamp(value: number, min: number, max: number) {
   }
 
   return Math.min(Math.max(value, min), max);
+}
+
+function getHorizontalPosition(
+  anchorRect: PopupRect,
+  containerRect: PopupRect,
+  popupWidth: number,
+) {
+  const rightSideLeft = anchorRect.left - containerRect.left;
+  const leftSideLeft = anchorRect.left - containerRect.left - popupWidth - popupGap;
+  const maxLeft = containerRect.width - popupWidth - boundaryPadding;
+
+  if (rightSideLeft + popupWidth <= containerRect.width - boundaryPadding) {
+    return rightSideLeft;
+  }
+
+  if (leftSideLeft >= boundaryPadding) {
+    return leftSideLeft;
+  }
+
+  return clamp(leftSideLeft, boundaryPadding, maxLeft);
 }
 
 function formatChinese(traditional: string, simplified: string) {
