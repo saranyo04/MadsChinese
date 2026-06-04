@@ -7,9 +7,6 @@ build/
 out/
 src-tauri/target/
 
-# Local reference source
-zhongwen-master/
-
 # Logs
 *.log
 npm-debug.log*
@@ -56,7 +53,3 @@ latest.json
 
 # Generated package artifacts
 *.tgz
-
-
-src-tauri/target/
-dist/
