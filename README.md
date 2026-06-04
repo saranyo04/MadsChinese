@@ -17,4 +17,4 @@ Built with Vite, React, TypeScript, Tailwind CSS, and Tauri.
 * Multi-character word matching
 * Highlighted dictionary matches
 
-TBD on the rest
+TBD on the rest.
