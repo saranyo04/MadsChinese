@@ -330,9 +330,9 @@ function isChineseCharacter(character: string) {
 }
 
 const zwnj = /\u200c/g;
-const HORIZONTAL_TOLERANCE_PX = 4;
-const VERTICAL_TOLERANCE_PX = 2;
-const HOVER_GRACE_DISTANCE_PX = 4;
+const HORIZONTAL_TOLERANCE_PX = 10;
+const VERTICAL_TOLERANCE_PX = 4;
+const HOVER_GRACE_DISTANCE_PX = 2;
 
 function isPointOverText(
   textNode: Text,
