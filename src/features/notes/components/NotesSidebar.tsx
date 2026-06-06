@@ -104,17 +104,17 @@ export function NotesSidebar({
 
   return (
     <aside
-      className="flex w-72 shrink-0 flex-col border-l border-[var(--theme-border)] bg-[var(--theme-notes-surface)]"
+      className="flex w-72 shrink-0 flex-col border-l border-[var(--border)] bg-[var(--sidebar)]"
       onClick={() => setPendingDeleteId(null)}
     >
-      <div className="space-y-3 border-b border-[var(--theme-border)] px-4 py-3">
-        <h2 className="text-sm font-semibold text-stone-900">Notes</h2>
+      <div className="space-y-3 border-b border-[var(--border)] px-4 py-3">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">Notes</h2>
         <input
           type="search"
           value={searchText}
           onChange={(event) => setSearchText(event.target.value)}
           placeholder="Search titles..."
-          className="h-8 w-full rounded-md border border-[var(--theme-border)] bg-white px-2 text-sm text-stone-950 outline-none transition placeholder:text-stone-400 focus:border-[var(--theme-border-hover)] focus:ring-2 focus:ring-[var(--theme-focus-ring)]"
+          className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--placeholder)] focus:border-[var(--border-hover)] focus:ring-2 focus:ring-[var(--ring)]"
           onClick={(event) => event.stopPropagation()}
         />
       </div>
@@ -122,31 +122,31 @@ export function NotesSidebar({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {pendingSwitchNoteId ? (
           <div
-            className="mb-2 rounded-md border border-[var(--theme-border)] bg-white px-3 py-2 text-xs text-stone-700 shadow-sm"
+            className="mb-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--foreground-secondary)] shadow-sm"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="mb-2 font-medium text-stone-900">
+            <p className="mb-2 font-medium text-[var(--foreground)]">
               Save changes before opening this note?
             </p>
             <div className="flex gap-1">
               <button
                 ref={saveSwitchButtonRef}
                 type="button"
-                className="rounded bg-[var(--theme-button-bg)] px-2 py-1 font-medium text-[var(--theme-button-text)] hover:bg-[var(--theme-button-bg-hover)]"
+                className="rounded bg-[var(--primary)] px-2 py-1 font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
                 onClick={() => void handleSaveAndOpenPendingNote()}
               >
                 Save
               </button>
               <button
                 type="button"
-                className="rounded border border-[var(--theme-border)] bg-white px-2 py-1 text-stone-700 hover:bg-[var(--theme-notes-hover-bg)]"
+                className="rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[var(--foreground-secondary)] hover:bg-[var(--sidebar-accent)]"
                 onClick={handleDiscardAndOpenPendingNote}
               >
                 Discard
               </button>
               <button
                 type="button"
-                className="rounded px-2 py-1 text-stone-500 hover:bg-[var(--theme-notes-hover-bg)]"
+                className="rounded px-2 py-1 text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)]"
                 onClick={handleCancelOpenNote}
               >
                 Cancel
@@ -156,14 +156,14 @@ export function NotesSidebar({
         ) : null}
 
         {notes.length === 0 ? (
-          <div className="px-2 py-3 text-sm text-[var(--theme-notes-muted-text)]">
-            <p className="font-medium text-stone-800">No saved notes yet.</p>
+          <div className="px-2 py-3 text-sm text-[var(--muted-foreground)]">
+            <p className="font-medium text-[var(--foreground)]">No saved notes yet.</p>
             <p className="mt-1">
               Write in the workspace, then press Save to keep your first note.
             </p>
           </div>
         ) : visibleNotes.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-[var(--theme-notes-muted-text)]">
+          <p className="px-2 py-3 text-sm text-[var(--muted-foreground)]">
             No note titles match your search.
           </p>
         ) : (
@@ -177,8 +177,8 @@ export function NotesSidebar({
                   key={note.id}
                   className={`group rounded-md border px-3 py-2 ${
                     isSelected
-                      ? "border-[var(--theme-notes-selected-border)] bg-[var(--theme-notes-selected-bg)]"
-                      : "border-transparent hover:bg-[var(--theme-notes-hover-bg)]"
+                      ? "border-[var(--sidebar-selected-border)] bg-[var(--sidebar-selected)]"
+                      : "border-transparent hover:bg-[var(--sidebar-accent)]"
                   }`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -191,10 +191,10 @@ export function NotesSidebar({
                 >
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-stone-950">
+                      <p className="truncate text-sm font-medium text-[var(--foreground)]">
                         {note.title}
                       </p>
-                      <p className="mt-1 truncate text-xs text-stone-500">
+                      <p className="mt-1 truncate text-xs text-[var(--muted-foreground)]">
                         {formatUpdatedAt(note.updatedAt)}
                       </p>
                     </div>
@@ -203,8 +203,8 @@ export function NotesSidebar({
                       type="button"
                       className={`shrink-0 rounded px-2 py-1 text-xs ${
                         isConfirmingDelete
-                          ? "bg-red-50 text-red-700"
-                          : "text-stone-500 hover:bg-[var(--theme-note-action-hover-bg)] hover:text-[var(--theme-note-action-hover-text)]"
+                          ? "bg-[var(--destructive-subtle)] text-[var(--destructive)]"
+                          : "text-[var(--muted-foreground)] hover:bg-[var(--sidebar-selected)] hover:text-[var(--sidebar-selected-foreground)]"
                       }`}
                       onClick={(event) => {
                         event.stopPropagation();

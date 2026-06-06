@@ -203,7 +203,7 @@ export function WorkspaceShell() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0">
-        <div className="min-w-0 flex-1 border-b border-[var(--theme-border)] bg-[var(--theme-surface)]">
+        <div className="min-w-0 flex-1 border-b border-[var(--border)] bg-[var(--background)]">
           <div className="flex h-16 items-center gap-2.5 px-6">
             <div
               className="relative flex"
@@ -216,7 +216,7 @@ export function WorkspaceShell() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-r-none border-r-0 px-4 py-2 font-semibold hover:bg-[var(--theme-button-outline-bg-hover)]"
+                className="h-10 rounded-r-none border-r-0 px-4 py-2 font-semibold hover:bg-[var(--accent)]"
                 onClick={() => void handleToolbarSave()}
               >
                 Save
@@ -224,24 +224,24 @@ export function WorkspaceShell() {
               <button
                 type="button"
                 aria-label="More save options"
-                className="h-10 rounded-r-md border border-l-0 border-[var(--theme-border)] bg-[var(--theme-button-outline-bg)] px-3 py-2 text-sm font-medium text-[var(--theme-button-outline-text)] transition-colors hover:border-[var(--theme-border-hover)] hover:bg-[var(--theme-button-outline-bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus-ring)]"
+                className="h-10 rounded-r-md border border-l-0 border-[var(--border)] bg-[var(--secondary)] px-3 py-2 text-sm font-medium text-[var(--secondary-foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 onClick={() => setIsSaveMenuOpen((isOpen) => !isOpen)}
               >
                 <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </button>
 
               {isSaveMenuOpen ? (
-                <div className="absolute left-0 top-10 z-20 w-32 rounded-md border border-[var(--theme-border)] bg-white py-1 text-sm shadow-md">
+                <div className="absolute left-0 top-10 z-20 w-32 rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md">
                   <button
                     type="button"
-                    className="block w-full px-3 py-2 text-left text-stone-800 hover:bg-[var(--theme-notes-hover-bg)]"
+                    className="block w-full px-3 py-2 text-left text-[var(--card-foreground)] hover:bg-[var(--sidebar-accent)]"
                     onClick={() => void handleToolbarSave()}
                   >
                     Save
                   </button>
                   <button
                     type="button"
-                    className="block w-full px-3 py-2 text-left text-stone-800 hover:bg-[var(--theme-notes-hover-bg)]"
+                    className="block w-full px-3 py-2 text-left text-[var(--card-foreground)] hover:bg-[var(--sidebar-accent)]"
                     onClick={() => void handleToolbarSaveAsNew()}
                   >
                     Save as New
@@ -253,7 +253,7 @@ export function WorkspaceShell() {
             <Button
               type="button"
               variant="outline"
-              className="h-10 px-4 py-2 hover:bg-[var(--theme-button-outline-bg-hover)]"
+              className="h-10 px-4 py-2 hover:bg-[var(--accent)]"
               onClick={handleNewNote}
             >
               New Note
@@ -262,13 +262,13 @@ export function WorkspaceShell() {
             <Button
               type="button"
               variant="outline"
-              className="h-10 px-4 py-2 hover:bg-[var(--theme-button-outline-bg-hover)]"
+              className="h-10 px-4 py-2 hover:bg-[var(--accent)]"
             >
               Upload PDF
             </Button>
           </div>
 
-          <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--theme-border)] px-6 text-xs text-[var(--theme-notes-muted-text)]">
+          <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
             <span>{formatStatusDate(statusDate)}</span>
             <span>·</span>
             <span>{formatStatusTime(statusDate)}</span>
@@ -276,7 +276,7 @@ export function WorkspaceShell() {
             <span
               className={
                 hasUnsavedChanges
-                  ? "font-medium text-[var(--theme-button-text)]"
+                  ? "font-medium text-[var(--primary-foreground)]"
                   : undefined
               }
             >
@@ -285,7 +285,7 @@ export function WorkspaceShell() {
           </div>
         </div>
 
-        <div className="w-72 shrink-0 border-b border-l border-[var(--theme-border)] bg-[var(--theme-surface)]" />
+        <div className="w-72 shrink-0 border-b border-l border-[var(--border)] bg-[var(--background)]" />
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -310,14 +310,14 @@ export function WorkspaceShell() {
       </div>
 
       <div
-        className={`pointer-events-none fixed bottom-5 right-5 z-50 rounded-md border border-stone-200 bg-white/95 px-4 py-3 text-right shadow-lg transition duration-500 ${
+        className={`pointer-events-none fixed bottom-5 right-5 z-50 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-right shadow-lg transition duration-500 ${
           isEasterEggVisible
             ? "translate-y-0 opacity-100"
             : "translate-y-2 opacity-0"
         }`}
       >
-        <p className="text-lg font-semibold text-stone-950">wo ai ni!!!</p>
-        <p className="text-sm text-stone-500">我爱你</p>
+        <p className="text-lg font-semibold text-[var(--card-foreground)]">wo ai ni!!!</p>
+        <p className="text-sm text-[var(--muted-foreground)]">我爱你</p>
       </div>
     </div>
   );
