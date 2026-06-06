@@ -6,7 +6,6 @@ import {
   type MouseEvent,
 } from "react";
 
-import { Button } from "../../components/ui/button";
 import {
   DictionaryPopup,
   useDictionary,
@@ -40,20 +39,16 @@ type TextWorkspaceProps = {
   editorContent: string;
   noteTitle: string;
   onEditorContentChange: (content: string) => void;
-  onNewNote: () => void;
   onNoteTitleChange: (title: string) => void;
   onSave: () => Promise<void>;
-  onSaveAsNew: () => Promise<void>;
 };
 
 export function TextWorkspace({
   editorContent,
   noteTitle,
   onEditorContentChange,
-  onNewNote,
   onNoteTitleChange,
   onSave,
-  onSaveAsNew,
 }: TextWorkspaceProps) {
   const [popup, setPopup] = useState<PopupState | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -111,11 +106,6 @@ export function TextWorkspace({
 
   function handleEditorInput() {
     onEditorContentChange(editorRef.current?.innerText ?? "");
-  }
-
-  function handleNewNote() {
-    onNewNote();
-    dismissPopup();
   }
 
   function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -288,7 +278,7 @@ export function TextWorkspace({
 
   return (
     <section
-      className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-5"
+      className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4"
       onMouseLeave={handleMouseLeave}
     >
       <input
@@ -330,20 +320,6 @@ Shortcuts:
             />
           ) : null}
         </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
-        <Button type="button" onClick={() => void onSave()}>
-          Save
-        </Button>
-
-        <Button type="button" variant="outline" onClick={() => void onSaveAsNew()}>
-          Save as New
-        </Button>
-
-        <Button type="button" variant="outline" onClick={handleNewNote}>
-          New Note
-        </Button>
       </div>
     </section>
   );
