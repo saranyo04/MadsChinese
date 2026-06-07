@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Settings as SettingsIcon } from "lucide-react";
 
+import { SettingsDialog } from "../../components/settings/SettingsDialog";
 import { Button } from "../../components/ui/button";
 import {
   applyTheme,
@@ -29,7 +30,7 @@ export function WorkspaceShell() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const [isEasterEggVisible, setIsEasterEggVisible] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
-  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [statusDate, setStatusDate] = useState(() => new Date());
   const [themes, setThemes] = useState<ThemeDefinition[]>([]);
   const [activeThemeId, setActiveThemeId] = useState("");
@@ -153,7 +154,6 @@ export function WorkspaceShell() {
 
   async function handleToolbarSave() {
     setIsSaveMenuOpen(false);
-    setIsSettingsMenuOpen(false);
     await handleSave();
   }
 
@@ -178,13 +178,11 @@ export function WorkspaceShell() {
 
   async function handleToolbarSaveAsNew() {
     setIsSaveMenuOpen(false);
-    setIsSettingsMenuOpen(false);
     await handleSaveAsNew();
   }
 
   function handleNewNote() {
     setIsSaveMenuOpen(false);
-    setIsSettingsMenuOpen(false);
     setEditorContent("");
     setNoteTitle("");
     setCurrentNoteId(null);
@@ -201,7 +199,6 @@ export function WorkspaceShell() {
     applyTheme(theme);
     saveSelectedThemeId(theme.id);
     setActiveThemeId(theme.id);
-    setIsSettingsMenuOpen(false);
   }
 
   function handleSelectNote(note: Note) {
@@ -318,42 +315,18 @@ export function WorkspaceShell() {
               Upload PDF
             </Button>
 
-            <div
-              className="relative"
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) {
-                  setIsSettingsMenuOpen(false);
-                }
+            <Button
+              type="button"
+              variant="outline"
+              aria-label="Open settings"
+              className="ml-auto h-10 w-10 px-0 py-2 hover:bg-[var(--accent)]"
+              onClick={() => {
+                setIsSaveMenuOpen(false);
+                setIsSettingsDialogOpen(true);
               }}
             >
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 px-4 py-2 hover:bg-[var(--accent)]"
-                onClick={() => {
-                  setIsSaveMenuOpen(false);
-                  setIsSettingsMenuOpen((isOpen) => !isOpen);
-                }}
-              >
-                Settings
-              </Button>
-
-              {isSettingsMenuOpen ? (
-                <div className="absolute left-0 top-10 z-20 w-40 rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md">
-                  {themes.map((theme) => (
-                    <button
-                      type="button"
-                      className="block w-full px-3 py-2 text-left text-[var(--foreground)] hover:bg-[var(--sidebar-accent)]"
-                      key={theme.id}
-                      onClick={() => handleSelectTheme(theme.id)}
-                    >
-                      {theme.name}
-                      {theme.id === activeThemeId ? " (selected)" : ""}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+              <SettingsIcon className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
 
           <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
@@ -407,6 +380,14 @@ export function WorkspaceShell() {
         <p className="text-lg font-semibold text-[var(--foreground)]">wo ai ni!!!</p>
         <p className="text-sm text-[var(--muted-foreground)]">我爱你</p>
       </div>
+
+      <SettingsDialog
+        activeThemeId={activeThemeId}
+        onOpenChange={setIsSettingsDialogOpen}
+        onSelectTheme={handleSelectTheme}
+        open={isSettingsDialogOpen}
+        themes={themes}
+      />
     </div>
   );
 }
