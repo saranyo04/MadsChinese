@@ -71,7 +71,7 @@ export function SettingsDialog({
 
             <div className="min-h-56">
               <div
-                className={`max-h-56 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md ${
+              className={`themed-scrollbar max-h-56 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md ${
                   isThemeMenuOpen ? "block" : "hidden"
                 }`}
                 id="theme-select-menu"

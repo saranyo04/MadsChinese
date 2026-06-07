@@ -73,3 +73,29 @@ body,
 body {
   overflow: hidden;
 }
+
+.themed-scrollbar {
+  scrollbar-color: color-mix(in srgb, var(--border), var(--accent) 35%)
+    color-mix(in srgb, var(--paper), transparent 20%);
+  scrollbar-width: thin;
+}
+
+.themed-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--paper), transparent 20%);
+  border-radius: 999px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border), var(--accent) 35%);
+  border: 2px solid color-mix(in srgb, var(--paper), transparent 20%);
+  border-radius: 999px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--border-hover), var(--accent) 45%);
+}

@@ -250,9 +250,9 @@ export function WorkspaceShell() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0">
-        <div className="min-w-0 flex-1 border-b border-[var(--border)] bg-[var(--background)]">
-          <div className="flex h-16 items-center gap-2.5 px-6">
+      <div className="shrink-0 border-b border-[var(--border)] bg-[var(--background)]">
+        <div className="flex h-16 items-center gap-2.5 px-6">
+          <div className="flex items-center gap-2.5">
             <div
               className="relative flex"
               onBlur={(event) => {
@@ -314,39 +314,35 @@ export function WorkspaceShell() {
             >
               Upload PDF
             </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              aria-label="Open settings"
-              className="ml-auto h-10 w-10 px-0 py-2 hover:bg-[var(--accent)]"
-              onClick={() => {
-                setIsSaveMenuOpen(false);
-                setIsSettingsDialogOpen(true);
-              }}
-            >
-              <SettingsIcon className="h-4 w-4" aria-hidden="true" />
-            </Button>
           </div>
 
-          <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
-            <span>{formatStatusDate(statusDate)}</span>
-            <span>·</span>
-            <span>{formatStatusTime(statusDate)}</span>
-            <span>·</span>
-            <span
-              className={
-                hasUnsavedChanges
-                  ? "font-medium text-[var(--foreground)]"
-                  : undefined
-              }
-            >
-              {hasUnsavedChanges ? "Unsaved" : "Saved"}
-            </span>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="Open settings"
+            className="ml-auto h-10 w-10 px-0 py-2 hover:bg-[var(--accent)]"
+            onClick={() => {
+              setIsSaveMenuOpen(false);
+              setIsSettingsDialogOpen(true);
+            }}
+          >
+            <SettingsIcon className="h-4 w-4" aria-hidden="true" />
+          </Button>
         </div>
 
-        <div className="w-72 shrink-0 border-b border-l border-[var(--border)] bg-[var(--background)]" />
+        <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
+          <span>{formatStatusDate(statusDate)}</span>
+          <span>·</span>
+          <span>{formatStatusTime(statusDate)}</span>
+          <span>·</span>
+          <span
+            className={
+              hasUnsavedChanges ? "font-medium text-[var(--foreground)]" : undefined
+            }
+          >
+            {hasUnsavedChanges ? "Unsaved" : "Saved"}
+          </span>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

@@ -104,10 +104,10 @@ export function NotesSidebar({
 
   return (
     <aside
-      className="flex w-72 shrink-0 flex-col border-l border-[var(--border)] bg-[var(--sidebar)]"
+      className="m-4 ml-0 flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-[var(--border)] bg-[var(--sidebar)]"
       onClick={() => setPendingDeleteId(null)}
     >
-      <div className="space-y-3 border-b border-[var(--border)] px-4 py-3">
+      <div className="space-y-3 border-b border-[var(--border)] px-4 py-4">
         <h2 className="text-sm font-semibold text-[var(--foreground)]">Notes</h2>
         <input
           type="search"
@@ -119,7 +119,7 @@ export function NotesSidebar({
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="themed-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
         {pendingSwitchNoteId ? (
           <div
             className="mb-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-sm"
@@ -231,5 +231,8 @@ function formatUpdatedAt(updatedAt: string) {
     return "";
   }
 
-  return date.toLocaleDateString();
+  return `${date.toLocaleDateString()} • ${date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
 }
