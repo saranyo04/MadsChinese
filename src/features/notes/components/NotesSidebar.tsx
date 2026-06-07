@@ -122,7 +122,7 @@ export function NotesSidebar({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {pendingSwitchNoteId ? (
           <div
-            className="mb-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--foreground-secondary)] shadow-sm"
+            className="mb-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-sm"
             onClick={(event) => event.stopPropagation()}
           >
             <p className="mb-2 font-medium text-[var(--foreground)]">
@@ -132,14 +132,14 @@ export function NotesSidebar({
               <button
                 ref={saveSwitchButtonRef}
                 type="button"
-                className="rounded bg-[var(--primary)] px-2 py-1 font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
+                className="rounded bg-[var(--primary)] px-2 py-1 font-medium text-[var(--foreground)] hover:bg-[var(--primary-hover)]"
                 onClick={() => void handleSaveAndOpenPendingNote()}
               >
                 Save
               </button>
               <button
                 type="button"
-                className="rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[var(--foreground-secondary)] hover:bg-[var(--sidebar-accent)]"
+                className="rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)]"
                 onClick={handleDiscardAndOpenPendingNote}
               >
                 Discard
@@ -204,7 +204,7 @@ export function NotesSidebar({
                       className={`shrink-0 rounded px-2 py-1 text-xs ${
                         isConfirmingDelete
                           ? "bg-[var(--destructive-subtle)] text-[var(--destructive)]"
-                          : "text-[var(--muted-foreground)] hover:bg-[var(--sidebar-selected)] hover:text-[var(--sidebar-selected-foreground)]"
+                          : "text-[var(--muted-foreground)] hover:bg-[var(--sidebar-selected)] hover:text-[var(--foreground)]"
                       }`}
                       onClick={(event) => {
                         event.stopPropagation();

@@ -1,0 +1,9 @@
+{
+  "id": "nord-soft",
+  "name": "Nord Soft",
+  "primary": "#81A1C1",
+  "secondary": "#A3BE8C",
+  "accent": "#88C0D0",
+  "darkNeutral": "#ECEFF4",
+  "lightNeutral": "#2E3440"
+}

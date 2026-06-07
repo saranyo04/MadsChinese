@@ -10,7 +10,13 @@
     "fs:write-files",
     {
       "identifier": "fs:scope",
-      "allow": ["$APPDATA/workspace", "$APPDATA/workspace/*", "$APPDATA/workspace/**/*"]
+      "allow": [
+        "$APPDATA/workspace",
+        "$APPDATA/workspace/*",
+        "$APPDATA/workspace/**/*",
+        "$APPDATA/themes",
+        "$APPDATA/themes/*"
+      ]
     }
   ]
 }

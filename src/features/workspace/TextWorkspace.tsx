@@ -308,7 +308,7 @@ Shortcuts:
           onMouseUp={handleMouseUp}
           onInput={handleEditorInput}
           spellCheck={false}
-          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-[var(--border)] bg-[var(--paper)] px-6 py-6 text-lg leading-8 text-[var(--paper-foreground)] shadow outline-none transition empty:before:pointer-events-none empty:before:text-[var(--placeholder)] empty:before:content-[attr(data-placeholder)] focus:border-[var(--border-hover)] focus:ring-4 focus:ring-[var(--ring)] placeholder:text-[var(--placeholder)]"
+          className="h-full min-h-0 w-full resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-[var(--border)] bg-[var(--paper)] px-6 py-6 text-lg leading-8 text-[var(--foreground)] shadow outline-none transition empty:before:pointer-events-none empty:before:text-[var(--placeholder)] empty:before:content-[attr(data-placeholder)] focus:border-[var(--border-hover)] focus:ring-4 focus:ring-[var(--ring)] placeholder:text-[var(--placeholder)]"
         />
 
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">

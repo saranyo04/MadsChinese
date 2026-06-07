@@ -1,0 +1,9 @@
+{
+  "id": "muted-pastel",
+  "name": "Muted Pastel",
+  "primary": "#BDD0C4",
+  "secondary": "#9AB7D3",
+  "accent": "#DFCCF1",
+  "darkNeutral": "#4D5461",
+  "lightNeutral": "#FAF7F3"
+}

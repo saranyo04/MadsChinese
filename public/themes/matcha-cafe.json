@@ -1,0 +1,9 @@
+{
+  "id": "matcha-cafe",
+  "name": "Matcha Café",
+  "primary": "#A3B18A",
+  "secondary": "#DAD7CD",
+  "accent": "#CCD5AE",
+  "darkNeutral": "#3A3A2E",
+  "lightNeutral": "#F5F2E8"
+}

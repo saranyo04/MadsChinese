@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { Button } from "../../components/ui/button";
+import {
+  applyTheme,
+  getInitialTheme,
+  getThemeById,
+  loadThemes,
+  saveSelectedThemeId,
+  type ThemeDefinition,
+} from "../../lib/theme/theme";
 import { NotesSidebar } from "../notes/components/NotesSidebar";
 import {
   createNote,
@@ -21,11 +29,38 @@ export function WorkspaceShell() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const [isEasterEggVisible, setIsEasterEggVisible] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [statusDate, setStatusDate] = useState(() => new Date());
+  const [themes, setThemes] = useState<ThemeDefinition[]>([]);
+  const [activeThemeId, setActiveThemeId] = useState("");
   const easterEggTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     void refreshNotes();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function refreshThemes() {
+      const loadedThemes = await loadThemes();
+      const initialTheme = getInitialTheme(loadedThemes);
+
+      if (initialTheme) {
+        applyTheme(initialTheme);
+      }
+
+      if (isMounted) {
+        setThemes(loadedThemes);
+        setActiveThemeId(initialTheme?.id ?? "");
+      }
+    }
+
+    void refreshThemes();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -118,6 +153,7 @@ export function WorkspaceShell() {
 
   async function handleToolbarSave() {
     setIsSaveMenuOpen(false);
+    setIsSettingsMenuOpen(false);
     await handleSave();
   }
 
@@ -142,15 +178,30 @@ export function WorkspaceShell() {
 
   async function handleToolbarSaveAsNew() {
     setIsSaveMenuOpen(false);
+    setIsSettingsMenuOpen(false);
     await handleSaveAsNew();
   }
 
   function handleNewNote() {
     setIsSaveMenuOpen(false);
+    setIsSettingsMenuOpen(false);
     setEditorContent("");
     setNoteTitle("");
     setCurrentNoteId(null);
     setSelectedNoteId(null);
+  }
+
+  function handleSelectTheme(themeId: string) {
+    const theme = getThemeById(themes, themeId);
+
+    if (!theme) {
+      return;
+    }
+
+    applyTheme(theme);
+    saveSelectedThemeId(theme.id);
+    setActiveThemeId(theme.id);
+    setIsSettingsMenuOpen(false);
   }
 
   function handleSelectNote(note: Note) {
@@ -224,7 +275,7 @@ export function WorkspaceShell() {
               <button
                 type="button"
                 aria-label="More save options"
-                className="h-10 rounded-r-md border border-l-0 border-[var(--border)] bg-[var(--secondary)] px-3 py-2 text-sm font-medium text-[var(--secondary-foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                className="h-10 rounded-r-md border border-l-0 border-[var(--border)] bg-[var(--secondary)] px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                 onClick={() => setIsSaveMenuOpen((isOpen) => !isOpen)}
               >
                 <ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -234,14 +285,14 @@ export function WorkspaceShell() {
                 <div className="absolute left-0 top-10 z-20 w-32 rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md">
                   <button
                     type="button"
-                    className="block w-full px-3 py-2 text-left text-[var(--card-foreground)] hover:bg-[var(--sidebar-accent)]"
+                    className="block w-full px-3 py-2 text-left text-[var(--foreground)] hover:bg-[var(--sidebar-accent)]"
                     onClick={() => void handleToolbarSave()}
                   >
                     Save
                   </button>
                   <button
                     type="button"
-                    className="block w-full px-3 py-2 text-left text-[var(--card-foreground)] hover:bg-[var(--sidebar-accent)]"
+                    className="block w-full px-3 py-2 text-left text-[var(--foreground)] hover:bg-[var(--sidebar-accent)]"
                     onClick={() => void handleToolbarSaveAsNew()}
                   >
                     Save as New
@@ -266,6 +317,43 @@ export function WorkspaceShell() {
             >
               Upload PDF
             </Button>
+
+            <div
+              className="relative"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setIsSettingsMenuOpen(false);
+                }
+              }}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 px-4 py-2 hover:bg-[var(--accent)]"
+                onClick={() => {
+                  setIsSaveMenuOpen(false);
+                  setIsSettingsMenuOpen((isOpen) => !isOpen);
+                }}
+              >
+                Settings
+              </Button>
+
+              {isSettingsMenuOpen ? (
+                <div className="absolute left-0 top-10 z-20 w-40 rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md">
+                  {themes.map((theme) => (
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-[var(--foreground)] hover:bg-[var(--sidebar-accent)]"
+                      key={theme.id}
+                      onClick={() => handleSelectTheme(theme.id)}
+                    >
+                      {theme.name}
+                      {theme.id === activeThemeId ? " (selected)" : ""}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
@@ -276,7 +364,7 @@ export function WorkspaceShell() {
             <span
               className={
                 hasUnsavedChanges
-                  ? "font-medium text-[var(--primary-foreground)]"
+                  ? "font-medium text-[var(--foreground)]"
                   : undefined
               }
             >
@@ -316,7 +404,7 @@ export function WorkspaceShell() {
             : "translate-y-2 opacity-0"
         }`}
       >
-        <p className="text-lg font-semibold text-[var(--card-foreground)]">wo ai ni!!!</p>
+        <p className="text-lg font-semibold text-[var(--foreground)]">wo ai ni!!!</p>
         <p className="text-sm text-[var(--muted-foreground)]">我爱你</p>
       </div>
     </div>

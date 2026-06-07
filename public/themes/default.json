@@ -1,0 +1,9 @@
+{
+  "id": "default",
+  "name": "Default",
+  "primary": "#1a1a1a",
+  "secondary": "#e8e8e8",
+  "accent": "#505050",
+  "darkNeutral": "#0d0d0d",
+  "lightNeutral": "#ffffff"
+}
