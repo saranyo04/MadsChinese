@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { ChevronDown, Settings as SettingsIcon } from "lucide-react";
 
 import { SettingsDialog } from "../../components/settings/SettingsDialog";
@@ -30,11 +30,15 @@ export function WorkspaceShell() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const [isEasterEggVisible, setIsEasterEggVisible] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
+  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
+  const [isImportingPdf, setIsImportingPdf] = useState(false);
+  const [pdfImportError, setPdfImportError] = useState<string | null>(null);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [statusDate, setStatusDate] = useState(() => new Date());
   const [themes, setThemes] = useState<ThemeDefinition[]>([]);
   const [activeThemeId, setActiveThemeId] = useState("");
   const easterEggTimerRef = useRef<number | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void refreshNotes();
@@ -154,6 +158,7 @@ export function WorkspaceShell() {
 
   async function handleToolbarSave() {
     setIsSaveMenuOpen(false);
+    setIsFileMenuOpen(false);
     await handleSave();
   }
 
@@ -178,15 +183,62 @@ export function WorkspaceShell() {
 
   async function handleToolbarSaveAsNew() {
     setIsSaveMenuOpen(false);
+    setIsFileMenuOpen(false);
     await handleSaveAsNew();
   }
 
   function handleNewNote() {
     setIsSaveMenuOpen(false);
+    setIsFileMenuOpen(false);
     setEditorContent("");
     setNoteTitle("");
     setCurrentNoteId(null);
     setSelectedNoteId(null);
+  }
+
+  function handleImportPdfClick() {
+    setIsFileMenuOpen(false);
+    setPdfImportError(null);
+    pdfInputRef.current?.click();
+  }
+
+  async function handlePdfFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!isPdfFile(file)) {
+      setPdfImportError("Please choose a PDF file.");
+      return;
+    }
+
+    setIsImportingPdf(true);
+    setPdfImportError(null);
+
+    try {
+      const extractedText = await extractPdfText(file);
+
+      if (!extractedText.trim()) {
+        setPdfImportError(
+          "No selectable text was found in this PDF. Scanned PDFs are not supported yet.",
+        );
+        return;
+      }
+
+      setEditorContent(extractedText);
+
+      if (currentNoteId === null) {
+        setNoteTitle(getPdfNoteTitle(file.name));
+      }
+    } catch (error) {
+      console.error("PDF import failed", error);
+      setPdfImportError("Could not extract text from this PDF.");
+    } finally {
+      setIsImportingPdf(false);
+    }
   }
 
   function handleSelectTheme(themeId: string) {
@@ -273,7 +325,10 @@ export function WorkspaceShell() {
                 type="button"
                 aria-label="More save options"
                 className="h-10 rounded-r-md border border-l-0 border-[var(--border)] bg-[var(--secondary)] px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                onClick={() => setIsSaveMenuOpen((isOpen) => !isOpen)}
+                onClick={() => {
+                  setIsFileMenuOpen(false);
+                  setIsSaveMenuOpen((isOpen) => !isOpen);
+                }}
               >
                 <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -307,13 +362,48 @@ export function WorkspaceShell() {
               New Note
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 px-4 py-2 hover:bg-[var(--accent)]"
+            <div
+              className="relative"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setIsFileMenuOpen(false);
+                }
+              }}
             >
-              Upload PDF
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 px-4 py-2 hover:bg-[var(--accent)]"
+                aria-expanded={isFileMenuOpen}
+                onClick={() => {
+                  setIsSaveMenuOpen(false);
+                  setIsFileMenuOpen((isOpen) => !isOpen);
+                }}
+              >
+                File
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </Button>
+
+              {isFileMenuOpen ? (
+                <div className="absolute left-0 top-10 z-20 w-36 rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-sm shadow-md">
+                  <button
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-[var(--foreground)] hover:bg-[var(--sidebar-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isImportingPdf}
+                    onClick={handleImportPdfClick}
+                  >
+                    {isImportingPdf ? "Importing..." : "Import PDF"}
+                  </button>
+                  <button
+                    type="button"
+                    className="block w-full cursor-not-allowed px-3 py-2 text-left text-[var(--muted-foreground)] opacity-60"
+                    disabled
+                  >
+                    Export PDF
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <Button
@@ -323,6 +413,7 @@ export function WorkspaceShell() {
             className="ml-auto h-10 w-10 px-0 py-2 hover:bg-[var(--accent)]"
             onClick={() => {
               setIsSaveMenuOpen(false);
+              setIsFileMenuOpen(false);
               setIsSettingsDialogOpen(true);
             }}
           >
@@ -377,6 +468,20 @@ export function WorkspaceShell() {
         <p className="text-sm text-[var(--muted-foreground)]">我爱你</p>
       </div>
 
+      {pdfImportError ? (
+        <div className="fixed bottom-5 left-5 z-50 max-w-sm rounded-md border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] shadow-lg">
+          {pdfImportError}
+        </div>
+      ) : null}
+
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(event) => void handlePdfFileChange(event)}
+      />
+
       <SettingsDialog
         activeThemeId={activeThemeId}
         onOpenChange={setIsSettingsDialogOpen}
@@ -386,6 +491,28 @@ export function WorkspaceShell() {
       />
     </div>
   );
+}
+
+async function extractPdfText(file: File) {
+  const { PDF } = await import("@libpdf/core");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const pdf = await PDF.load(bytes);
+  const pages: string[] = [];
+
+  for (const page of pdf.getPages()) {
+    const { text } = page.extractText();
+    pages.push(text);
+  }
+
+  return pages.join("\n\n");
+}
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function getPdfNoteTitle(fileName: string) {
+  return fileName.replace(/\.pdf$/i, "").trim() || "Untitled";
 }
 
 function formatStatusDate(date: Date) {
