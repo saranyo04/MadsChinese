@@ -1,5 +1,7 @@
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { ChevronDown, Settings as SettingsIcon } from "lucide-react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 
 import { SettingsDialog } from "../../components/settings/SettingsDialog";
 import { Button } from "../../components/ui/button";
@@ -33,6 +35,8 @@ export function WorkspaceShell() {
   const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
   const [isImportingPdf, setIsImportingPdf] = useState(false);
   const [pdfImportError, setPdfImportError] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfExportNotice, setPdfExportNotice] = useState<string | null>(null);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [statusDate, setStatusDate] = useState(() => new Date());
   const [themes, setThemes] = useState<ThemeDefinition[]>([]);
@@ -199,7 +203,45 @@ export function WorkspaceShell() {
   function handleImportPdfClick() {
     setIsFileMenuOpen(false);
     setPdfImportError(null);
+    setPdfExportNotice(null);
     pdfInputRef.current?.click();
+  }
+
+  async function handleExportPdfClick() {
+    setIsFileMenuOpen(false);
+    setPdfImportError(null);
+    setPdfExportNotice(null);
+
+    const exportTitle = noteTitle.trim() || "Untitled Note";
+
+    let selectedPath: string | null;
+    try {
+      selectedPath = await save({
+        defaultPath: `${sanitizePdfFileName(exportTitle)}.pdf`,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+    } catch (error) {
+      console.error("PDF save dialog failed", error);
+      setPdfExportNotice("Could not open the PDF save dialog.");
+      return;
+    }
+
+    if (!selectedPath) {
+      return;
+    }
+
+    setIsExportingPdf(true);
+
+    try {
+      const pdfBytes = await createWorkspacePdf(exportTitle, editorContent);
+      await writeFile(ensurePdfExtension(selectedPath), pdfBytes);
+      setPdfExportNotice("PDF exported successfully.");
+    } catch (error) {
+      console.error("PDF export failed", error);
+      setPdfExportNotice("Could not export this note as a PDF.");
+    } finally {
+      setIsExportingPdf(false);
+    }
   }
 
   async function handlePdfFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -396,10 +438,11 @@ export function WorkspaceShell() {
                   </button>
                   <button
                     type="button"
-                    className="block w-full cursor-not-allowed px-3 py-2 text-left text-[var(--muted-foreground)] opacity-60"
-                    disabled
+                    className="block w-full px-3 py-2 text-left text-[var(--foreground)] hover:bg-[var(--sidebar-accent)] disabled:cursor-not-allowed disabled:text-[var(--muted-foreground)] disabled:opacity-60"
+                    disabled={isExportingPdf}
+                    onClick={() => void handleExportPdfClick()}
                   >
-                    Export PDF
+                    {isExportingPdf ? "Exporting..." : "Export PDF"}
                   </button>
                 </div>
               ) : null}
@@ -474,6 +517,12 @@ export function WorkspaceShell() {
         </div>
       ) : null}
 
+      {pdfExportNotice ? (
+        <div className="fixed bottom-20 left-5 z-50 max-w-sm rounded-md border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] shadow-lg">
+          {pdfExportNotice}
+        </div>
+      ) : null}
+
       <input
         ref={pdfInputRef}
         type="file"
@@ -504,8 +553,158 @@ async function extractPdfText(file: File) {
     pages.push(text);
   }
 
-  return pages.join("\n\n");
+  return normalizePdfImportedText(pages.join("\n\n"));
 }
+
+async function createWorkspacePdf(title: string, content: string) {
+  const { PDF, rgb } = await import("@libpdf/core");
+  const pdf = PDF.create();
+  const fontBytes = await loadPdfExportFont();
+  const font = pdf.fonts.embed(fontBytes);
+  const color = rgb(0, 0, 0);
+  const margin = 54;
+  const titleSize = 16;
+  const bodySize = 12;
+  const titleLineHeight = 22;
+  const bodyLineHeight = 17;
+  let page = pdf.addPage({ size: "a4" });
+  let y = page.height - margin;
+  const contentWidth = page.width - margin * 2;
+
+  function addPage() {
+    page = pdf.addPage({ size: "a4" });
+    y = page.height - margin;
+  }
+
+  function ensureLineSpace(lineHeight: number) {
+    if (y < margin + lineHeight) {
+      addPage();
+    }
+  }
+
+  function drawLine(line: string, size: number, lineHeight: number) {
+    ensureLineSpace(lineHeight);
+    page.drawText(line, {
+      x: margin,
+      y,
+      size,
+      font,
+      color,
+    });
+    y -= lineHeight;
+  }
+
+  function advanceBlankLine(lineHeight: number) {
+    ensureLineSpace(lineHeight);
+    y -= lineHeight;
+  }
+
+  const normalizedTitle = normalizePdfExportText(title);
+  for (const line of wrapPdfTextLine(normalizedTitle, font, titleSize, contentWidth)) {
+    drawLine(line, titleSize, titleLineHeight);
+  }
+
+  advanceBlankLine(bodyLineHeight);
+
+  const normalizedContent = normalizePdfExportText(content).replace(/\t/g, "    ");
+  for (const rawLine of normalizedContent.split(/\r?\n/)) {
+    if (rawLine.length === 0) {
+      advanceBlankLine(bodyLineHeight);
+      continue;
+    }
+
+    for (const line of wrapPdfTextLine(rawLine, font, bodySize, contentWidth)) {
+      drawLine(line, bodySize, bodyLineHeight);
+    }
+  }
+
+  return pdf.save({ subsetFonts: true });
+}
+
+async function loadPdfExportFont() {
+  const response = await fetch(PDF_EXPORT_FONT_PATH);
+
+  if (!response.ok) {
+    throw new Error(`Could not load PDF export font: ${response.status}`);
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+function wrapPdfTextLine(
+  line: string,
+  font: { getTextWidth(text: string, fontSize: number): number },
+  fontSize: number,
+  maxWidth: number,
+) {
+  const characters = Array.from(line);
+  const wrappedLines: string[] = [];
+  let currentLine = "";
+
+  for (const character of characters) {
+    const nextLine = `${currentLine}${character}`;
+
+    if (currentLine && font.getTextWidth(nextLine, fontSize) > maxWidth) {
+      wrappedLines.push(currentLine);
+      currentLine = character;
+      continue;
+    }
+
+    currentLine = nextLine;
+  }
+
+  if (currentLine) {
+    wrappedLines.push(currentLine);
+  }
+
+  return wrappedLines.length > 0 ? wrappedLines : [""];
+}
+
+function normalizePdfImportedText(text: string) {
+  let listNumber = 1;
+  let normalized = text.replace(
+    /(^|\n)(\u0000+)\.\s/g,
+    (_match, lineStart: string) => `${lineStart}${listNumber++}. `,
+  );
+
+  for (const [from, to] of PDF_TEXT_REPLACEMENTS) {
+    normalized = normalized.split(from).join(to);
+  }
+
+  return normalized
+    .replace(/\uFB00/g, "ff")
+    .replace(/\uFB01/g, "fi")
+    .replace(/\uFB02/g, "fl")
+    .replace(/\uFB03/g, "ffi")
+    .replace(/\uFB04/g, "ffl");
+}
+
+function normalizePdfExportText(text: string) {
+  return normalizePdfImportedText(text).replace(/\u0000/g, "");
+}
+
+const PDF_TEXT_REPLACEMENTS: Array<[string, string]> = [
+  ["\u0000rst", "first"],
+  ["o\u0000cials", "officials"],
+  ["o\u0000cial", "official"],
+  ["di\u0000cult", "difficult"],
+  ["e\u0000ciency", "efficiency"],
+  ["in\u0000ation", "inflation"],
+  ["\u0000nancial", "financial"],
+  ["\u0000nance", "finance"],
+  ["\u0000fth", "fifth"],
+  ["\u0000owed", "flowed"],
+  ["arti\u0000cial", "artificial"],
+  ["\u0000sheries", "fisheries"],
+  ["\u0000uctuations", "fluctuations"],
+  ["\u0000scal", "fiscal"],
+  ["\u0000rm", "firm"],
+  ["pro\u0000ts", "profits"],
+  ["uni\u0000ed", "unified"],
+  ["signi\u0000cantly", "significantly"],
+];
+
+const PDF_EXPORT_FONT_PATH = "/fonts/NotoSansCJKsc-Regular.otf";
 
 function isPdfFile(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -513,6 +712,20 @@ function isPdfFile(file: File) {
 
 function getPdfNoteTitle(fileName: string) {
   return fileName.replace(/\.pdf$/i, "").trim() || "Untitled";
+}
+
+function sanitizePdfFileName(fileName: string) {
+  const sanitized = fileName
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[. ]+$/g, "");
+
+  return sanitized || "Untitled Note";
+}
+
+function ensurePdfExtension(filePath: string) {
+  return filePath.toLowerCase().endsWith(".pdf") ? filePath : `${filePath}.pdf`;
 }
 
 function formatStatusDate(date: Date) {
