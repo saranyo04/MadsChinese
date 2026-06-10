@@ -73,7 +73,7 @@ export function DictionaryPopup({
   return (
     <div
       ref={popupRef}
-      className="pointer-events-none absolute z-20 w-max max-w-[320px] rounded border border-stone-300 bg-[#FFFFC8] px-3 py-2 text-stone-950 shadow-md"
+      className="pointer-events-none absolute z-20 w-max max-w-[320px] rounded border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[var(--foreground)] shadow-md"
       style={{
         left,
         top,
@@ -83,7 +83,7 @@ export function DictionaryPopup({
       <div>
         {entries.map((entry) => (
           <div
-            className="border-t border-stone-300 py-2 first:border-t-0 first:pt-0 last:pb-0"
+            className="border-t border-[var(--border)] py-2 first:border-t-0 first:pt-0 last:pb-0"
             key={`${entry.traditional}-${entry.pinyin}-${entry.raw}`}
           >
             <div className="text-xl leading-none">
@@ -100,7 +100,7 @@ export function DictionaryPopup({
                 </span>
               ))}
             </div>
-            <div className="mt-1 text-xs font-normal leading-4 text-stone-800">
+            <div className="mt-1 text-xs font-normal leading-4 text-[var(--muted-foreground)]">
               {entry.definitions.join("; ")}
             </div>
           </div>
@@ -108,7 +108,9 @@ export function DictionaryPopup({
       </div>
 
       {result.more ? (
-        <div className="mt-2 text-xs text-stone-400">More entries available</div>
+        <div className="mt-2 text-xs text-[var(--muted-foreground)]">
+          More entries available
+        </div>
       ) : null}
     </div>
   );
@@ -159,14 +161,14 @@ function toneClassName(syllable: string) {
 
   switch (tone) {
     case "1":
-      return "text-red-600";
+      return "text-[var(--tone-1)]";
     case "2":
-      return "text-orange-500";
+      return "text-[var(--tone-2)]";
     case "3":
-      return "text-green-600";
+      return "text-[var(--tone-3)]";
     case "4":
-      return "text-blue-600";
+      return "text-[var(--tone-4)]";
     default:
-      return "text-stone-500";
+      return "text-[var(--tone-5)]";
   }
 }
