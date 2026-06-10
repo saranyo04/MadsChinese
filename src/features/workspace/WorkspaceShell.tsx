@@ -22,7 +22,16 @@ import {
 } from "../notes/storage/notesStorage";
 import type { Note } from "../notes/types/notes.types";
 import { TextWorkspace } from "./TextWorkspace";
+import { loadWorkspaceDraft, saveWorkspaceDraft } from "./workspaceDraft";
 import { useWorkspaceShortcuts } from "./workspaceShortcuts";
+
+type WorkspaceReplacementAction = "new-note" | "import-pdf";
+
+type WorkspaceDraftSnapshot = {
+  title: string;
+  content: string;
+  currentNoteId: string | null;
+};
 
 export function WorkspaceShell() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -38,14 +47,57 @@ export function WorkspaceShell() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfExportNotice, setPdfExportNotice] = useState<string | null>(null);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [pendingReplacementAction, setPendingReplacementAction] =
+    useState<WorkspaceReplacementAction | null>(null);
+  const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [statusDate, setStatusDate] = useState(() => new Date());
   const [themes, setThemes] = useState<ThemeDefinition[]>([]);
   const [activeThemeId, setActiveThemeId] = useState("");
   const easterEggTimerRef = useRef<number | null>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const draftSaveTimerRef = useRef<number | null>(null);
+  const draftWritesInFlightRef = useRef(0);
+  const hasLoadedWorkspaceRef = useRef(false);
+  const skipNextDraftSaveRef = useRef(false);
+  const latestDraftSnapshotRef = useRef<WorkspaceDraftSnapshot>({
+    title: "",
+    content: "",
+    currentNoteId: null,
+  });
 
   useEffect(() => {
-    void refreshNotes();
+    let isMounted = true;
+
+    async function restoreWorkspace() {
+      const loadedNotes = await getSortedNotes();
+      const draft = await loadWorkspaceDraft();
+
+      if (!isMounted) {
+        return;
+      }
+
+      setNotes(loadedNotes);
+
+      if (draft) {
+        const draftNoteExists =
+          draft.currentNoteId !== null &&
+          loadedNotes.some((note) => note.id === draft.currentNoteId);
+
+        setNoteTitle(draft.title);
+        setEditorContent(draft.content);
+        setCurrentNoteId(draftNoteExists ? draft.currentNoteId : null);
+        setSelectedNoteId(draftNoteExists ? draft.currentNoteId : null);
+        skipNextDraftSaveRef.current = true;
+      }
+
+      hasLoadedWorkspaceRef.current = true;
+    }
+
+    void restoreWorkspace();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -102,17 +154,99 @@ export function WorkspaceShell() {
   const hasUnsavedChanges = currentNote
     ? currentNote.title !== noteTitle || currentNote.content !== editorContent
     : noteTitle.trim().length > 0 || editorContent.length > 0;
+  const workspaceStatus = isDraftSaving
+    ? "Saving..."
+    : hasUnsavedChanges
+      ? "Unsaved Changes"
+      : "Saved";
+
+  latestDraftSnapshotRef.current = {
+    title: noteTitle,
+    content: editorContent,
+    currentNoteId,
+  };
+
+  useEffect(() => {
+    if (!hasLoadedWorkspaceRef.current) {
+      return;
+    }
+
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      return;
+    }
+
+    if (draftSaveTimerRef.current) {
+      window.clearTimeout(draftSaveTimerRef.current);
+    }
+
+    draftSaveTimerRef.current = window.setTimeout(() => {
+      void persistCurrentDraft();
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (draftSaveTimerRef.current) {
+        window.clearTimeout(draftSaveTimerRef.current);
+        draftSaveTimerRef.current = null;
+      }
+    };
+  }, [noteTitle, editorContent, currentNoteId]);
+
+  useEffect(() => {
+    function flushDraft() {
+      void persistCurrentDraft();
+    }
+
+    window.addEventListener("beforeunload", flushDraft);
+    window.addEventListener("pagehide", flushDraft);
+
+    return () => {
+      window.removeEventListener("beforeunload", flushDraft);
+      window.removeEventListener("pagehide", flushDraft);
+    };
+  }, []);
 
   async function refreshNotes() {
-    const loadedNotes = await loadNotes();
-
-    loadedNotes.sort(
-      (firstNote, secondNote) =>
-        new Date(secondNote.updatedAt).getTime() -
-        new Date(firstNote.updatedAt).getTime(),
-    );
-
+    const loadedNotes = await getSortedNotes();
     setNotes(loadedNotes);
+  }
+
+  async function persistCurrentDraft() {
+    if (!hasLoadedWorkspaceRef.current) {
+      return;
+    }
+
+    const { title, content, currentNoteId } = latestDraftSnapshotRef.current;
+    await persistDraftSnapshot(title, content, currentNoteId);
+  }
+
+  async function persistDraftSnapshot(
+    title: string,
+    content: string,
+    noteId: string | null,
+  ) {
+    if (draftSaveTimerRef.current) {
+      window.clearTimeout(draftSaveTimerRef.current);
+      draftSaveTimerRef.current = null;
+    }
+
+    draftWritesInFlightRef.current += 1;
+    setIsDraftSaving(true);
+
+    try {
+      await saveWorkspaceDraft({
+        title,
+        content,
+        currentNoteId: noteId,
+      });
+    } catch (error) {
+      console.error("Workspace draft save failed", error);
+    } finally {
+      draftWritesInFlightRef.current -= 1;
+      if (draftWritesInFlightRef.current === 0) {
+        setIsDraftSaving(false);
+      }
+    }
   }
 
   async function handleSave() {
@@ -131,9 +265,11 @@ export function WorkspaceShell() {
 
       await createNote(note);
       await refreshNotes();
+      skipNextDraftSaveRef.current = true;
       setCurrentNoteId(newId);
       setSelectedNoteId(newId);
       setNoteTitle(title);
+      await persistDraftSnapshot(title, editorContent, newId);
       return;
     }
 
@@ -157,7 +293,9 @@ export function WorkspaceShell() {
 
     await refreshNotes();
     setSelectedNoteId(updatedNote.id);
+    skipNextDraftSaveRef.current = true;
     setNoteTitle(title);
+    await persistDraftSnapshot(title, editorContent, updatedNote.id);
   }
 
   async function handleToolbarSave() {
@@ -180,9 +318,11 @@ export function WorkspaceShell() {
 
     await createNote(note);
     await refreshNotes();
+    skipNextDraftSaveRef.current = true;
     setCurrentNoteId(newId);
     setSelectedNoteId(newId);
     setNoteTitle(title);
+    await persistDraftSnapshot(title, editorContent, newId);
   }
 
   async function handleToolbarSaveAsNew() {
@@ -194,16 +334,40 @@ export function WorkspaceShell() {
   function handleNewNote() {
     setIsSaveMenuOpen(false);
     setIsFileMenuOpen(false);
+    setPendingReplacementAction(null);
+
+    if (hasUnsavedChanges) {
+      setPendingReplacementAction("new-note");
+      return;
+    }
+
+    void createBlankWorkspace();
+  }
+
+  async function createBlankWorkspace() {
+    skipNextDraftSaveRef.current = true;
     setEditorContent("");
     setNoteTitle("");
     setCurrentNoteId(null);
     setSelectedNoteId(null);
+    await persistDraftSnapshot("", "", null);
   }
 
   function handleImportPdfClick() {
     setIsFileMenuOpen(false);
     setPdfImportError(null);
     setPdfExportNotice(null);
+
+    if (hasUnsavedChanges) {
+      setPendingReplacementAction("import-pdf");
+      return;
+    }
+
+    beginPdfImport();
+  }
+
+  function beginPdfImport() {
+    setPendingReplacementAction(null);
     pdfInputRef.current?.click();
   }
 
@@ -270,17 +434,59 @@ export function WorkspaceShell() {
         return;
       }
 
-      setEditorContent(extractedText);
+      const importedTitle =
+        currentNoteId === null ? getPdfNoteTitle(file.name) : noteTitle;
 
+      skipNextDraftSaveRef.current = true;
       if (currentNoteId === null) {
-        setNoteTitle(getPdfNoteTitle(file.name));
+        setNoteTitle(importedTitle);
       }
+
+      setEditorContent(extractedText);
+      await persistDraftSnapshot(importedTitle, extractedText, currentNoteId);
     } catch (error) {
       console.error("PDF import failed", error);
       setPdfImportError("Could not extract text from this PDF.");
     } finally {
       setIsImportingPdf(false);
     }
+  }
+
+  async function handleSaveReplacementAction() {
+    const action = pendingReplacementAction;
+    if (!action) {
+      return;
+    }
+
+    await handleSave();
+    setPendingReplacementAction(null);
+
+    if (action === "new-note") {
+      await createBlankWorkspace();
+      return;
+    }
+
+    beginPdfImport();
+  }
+
+  async function handleDiscardReplacementAction() {
+    const action = pendingReplacementAction;
+    if (!action) {
+      return;
+    }
+
+    setPendingReplacementAction(null);
+
+    if (action === "new-note") {
+      await createBlankWorkspace();
+      return;
+    }
+
+    beginPdfImport();
+  }
+
+  function handleCancelReplacementAction() {
+    setPendingReplacementAction(null);
   }
 
   function handleSelectTheme(themeId: string) {
@@ -300,6 +506,7 @@ export function WorkspaceShell() {
   }
 
   function handleOpenNote(note: Note) {
+    setPendingReplacementAction(null);
     setEditorContent(note.content);
     setNoteTitle(note.title);
     setCurrentNoteId(note.id);
@@ -344,7 +551,7 @@ export function WorkspaceShell() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-[var(--border)] bg-[var(--background)]">
+      <div className="relative shrink-0 border-b border-[var(--border)] bg-[var(--background)]">
         <div className="flex h-16 items-center gap-2.5 px-6">
           <div className="flex items-center gap-2.5">
             <div
@@ -464,6 +671,40 @@ export function WorkspaceShell() {
           </Button>
         </div>
 
+        {pendingReplacementAction ? (
+          <div className="absolute left-6 top-14 z-30 w-80 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-3 text-sm text-[var(--foreground)] shadow-md">
+            <p className="font-medium">You have unsaved changes.</p>
+            {pendingReplacementAction === "import-pdf" ? (
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                Importing a PDF will replace the current workspace.
+              </p>
+            ) : null}
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                className="rounded bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] hover:bg-[var(--primary-hover)]"
+                onClick={() => void handleSaveReplacementAction()}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className="rounded border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)]"
+                onClick={() => void handleDiscardReplacementAction()}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                className="rounded px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)]"
+                onClick={handleCancelReplacementAction}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
           <span>{formatStatusDate(statusDate)}</span>
           <span>·</span>
@@ -471,10 +712,12 @@ export function WorkspaceShell() {
           <span>·</span>
           <span
             className={
-              hasUnsavedChanges ? "font-medium text-[var(--foreground)]" : undefined
+              workspaceStatus !== "Saved"
+                ? "font-medium text-[var(--foreground)]"
+                : undefined
             }
           >
-            {hasUnsavedChanges ? "Unsaved" : "Saved"}
+            {workspaceStatus}
           </span>
         </div>
       </div>
@@ -705,6 +948,19 @@ const PDF_TEXT_REPLACEMENTS: Array<[string, string]> = [
 ];
 
 const PDF_EXPORT_FONT_PATH = "/fonts/NotoSansCJKsc-Regular.otf";
+const DRAFT_SAVE_DEBOUNCE_MS = 2500;
+
+async function getSortedNotes() {
+  const loadedNotes = await loadNotes();
+
+  loadedNotes.sort(
+    (firstNote, secondNote) =>
+      new Date(secondNote.updatedAt).getTime() -
+      new Date(firstNote.updatedAt).getTime(),
+  );
+
+  return loadedNotes;
+}
 
 function isPdfFile(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
