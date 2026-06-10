@@ -86,22 +86,24 @@ export function DictionaryPopup({
             className="border-t border-[var(--border)] py-2 first:border-t-0 first:pt-0 last:pb-0"
             key={`${entry.traditional}-${entry.pinyin}-${entry.raw}`}
           >
-            <div className="text-xl leading-none">
-              {formatChinese(entry.traditional, entry.simplified)}
-            </div>
-            <div className="mt-1 text-sm font-medium">
-              {entry.pinyin.split(/\s+/).map((syllable, index) => (
-                <span
-                  className={toneClassName(syllable)}
-                  key={`${syllable}-${index}`}
-                >
-                  {stripToneNumber(syllable)}
-                  {index < entry.pinyin.split(/\s+/).length - 1 ? " " : ""}
-                </span>
-              ))}
+            <div className="flex items-baseline gap-3">
+              <div className="text-xl leading-none">
+                {formatChinese(entry.traditional, entry.simplified)}
+              </div>
+              <div className="text-sm font-medium">
+                {entry.pinyin.split(/\s+/).map((syllable, index) => (
+                  <span
+                    className={toneClassName(syllable)}
+                    key={`${syllable}-${index}`}
+                  >
+                    {stripToneNumber(syllable)}
+                    {index < entry.pinyin.split(/\s+/).length - 1 ? " " : ""}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="mt-1 text-xs font-normal leading-4 text-[var(--muted-foreground)]">
-              {entry.definitions.join("; ")}
+              {entry.definitions.join(" · ")}
             </div>
           </div>
         ))}
