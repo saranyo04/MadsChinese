@@ -48,7 +48,7 @@ export function SettingsDialog({
           <X className="h-4 w-4" aria-hidden="true" />
         </DialogClose>
 
-        <section className="mt-7 space-y-2">
+        <section className="themed-scrollbar mt-7 min-h-0 flex-1 overflow-y-auto pr-1">
           <span
             className="text-sm font-semibold text-[var(--foreground)]"
             id="theme-select-label"
@@ -56,7 +56,7 @@ export function SettingsDialog({
             Themes
           </span>
 
-          <div className="space-y-1.5">
+          <div className="mt-2 space-y-1.5">
             <button
               aria-controls="theme-select-menu"
               aria-expanded={isThemeMenuOpen}

@@ -1,9 +1,10 @@
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
-import { ChevronDown, Settings as SettingsIcon } from "lucide-react";
+import { ChevronDown, Info, Settings as SettingsIcon } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 
 import { SettingsDialog } from "../../components/settings/SettingsDialog";
+import { InfoDialog } from "../../components/info/InfoDialog";
 import { Button } from "../../components/ui/button";
 import {
   applyTheme,
@@ -46,6 +47,7 @@ export function WorkspaceShell() {
   const [pdfImportError, setPdfImportError] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfExportNotice, setPdfExportNotice] = useState<string | null>(null);
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [pendingReplacementAction, setPendingReplacementAction] =
     useState<WorkspaceReplacementAction | null>(null);
@@ -659,11 +661,27 @@ export function WorkspaceShell() {
           <Button
             type="button"
             variant="outline"
-            aria-label="Open settings"
+            aria-label="Open info"
             className="ml-auto h-10 w-10 px-0 py-2 hover:bg-[var(--accent)]"
             onClick={() => {
               setIsSaveMenuOpen(false);
               setIsFileMenuOpen(false);
+              setIsSettingsDialogOpen(false);
+              setIsInfoDialogOpen(true);
+            }}
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="Open settings"
+            className="h-10 w-10 px-0 py-2 hover:bg-[var(--accent)]"
+            onClick={() => {
+              setIsSaveMenuOpen(false);
+              setIsFileMenuOpen(false);
+              setIsInfoDialogOpen(false);
               setIsSettingsDialogOpen(true);
             }}
           >
@@ -780,6 +798,11 @@ export function WorkspaceShell() {
         onSelectTheme={handleSelectTheme}
         open={isSettingsDialogOpen}
         themes={themes}
+      />
+
+      <InfoDialog
+        onOpenChange={setIsInfoDialogOpen}
+        open={isInfoDialogOpen}
       />
     </div>
   );
