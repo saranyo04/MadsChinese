@@ -1,5 +1,7 @@
 # MadsChinese
 
+v0.1.0
+
 MadsChinese is a desktop application for learning Chinese through reading.
 
 Paste, type, or import Chinese text into the workspace and hover over words to instantly view pinyin and English definitions. Everything runs locally on your machine for a fast, offline-friendly study experience.
@@ -71,4 +73,8 @@ Built with Vite, React, TypeScript, Tailwind CSS, and Tauri.
 
 Built by Saranyo.
 
-Special thanks to [Zhongwen Browser Extension](https://github.com/cschiller/zhongwen?utm_source=chatgpt.com) for inspiration behind the dictionary popup workflow, tone-color conventions, and Chinese reading experience.
+Special thanks to [Zhongwen Browser Extension](https://github.com/cschiller/zhongwen) for inspiration behind the dictionary popup workflow, tone-color conventions, and Chinese reading experience.
+
+Chinese dictionary data is derived from CC-CEDICT, © CC-CEDICT contributors, and is licensed under CC BY-SA 4.0.
+
+https://www.mdbg.net/chinese/dictionary?page=cc-cedict
