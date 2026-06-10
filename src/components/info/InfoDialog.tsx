@@ -108,16 +108,12 @@ export function InfoDialog({ open, onOpenChange }: InfoDialogProps) {
 
           <footer className="space-y-1 border-t border-[var(--border)] pt-4 text-center text-[var(--muted-foreground)]">
             <p>v0.1.0</p>
-            <p>Built by Saranyo.</p>
+            <p>Made with ♥ by Saranyo</p>
             <p>Special thanks to Zhongwen Browser Extension for inspiration.</p>
             <p>
               Chinese dictionary data is derived from CC-CEDICT, © CC-CEDICT
               contributors, and is licensed under CC BY-SA 4.0.
             </p>
-            <p className="break-all">
-              https://www.mdbg.net/chinese/dictionary?page=cc-cedict
-            </p>
-            <p className="break-all">https://github.com/cschiller/zhongwen</p>
           </footer>
         </div>
       </DialogContent>
