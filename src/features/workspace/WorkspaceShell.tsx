@@ -56,6 +56,7 @@ export function WorkspaceShell() {
   const [themes, setThemes] = useState<ThemeDefinition[]>([]);
   const [activeThemeId, setActiveThemeId] = useState("");
   const easterEggTimerRef = useRef<number | null>(null);
+  const pdfExportNoticeTimerRef = useRef<number | null>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const draftSaveTimerRef = useRef<number | null>(null);
   const draftWritesInFlightRef = useRef(0);
@@ -141,6 +142,9 @@ export function WorkspaceShell() {
       if (easterEggTimerRef.current) {
         window.clearTimeout(easterEggTimerRef.current);
       }
+      if (pdfExportNoticeTimerRef.current) {
+        window.clearTimeout(pdfExportNoticeTimerRef.current);
+      }
     };
   }, []);
 
@@ -161,6 +165,8 @@ export function WorkspaceShell() {
     : hasUnsavedChanges
       ? "Unsaved Changes"
       : "Saved";
+  const chineseCharacterCount = (editorContent.match(/[\u4E00-\u9FFF]/g) ?? [])
+    .length;
 
   latestDraftSnapshotRef.current = {
     title: noteTitle,
@@ -358,6 +364,10 @@ export function WorkspaceShell() {
   function handleImportPdfClick() {
     setIsFileMenuOpen(false);
     setPdfImportError(null);
+    if (pdfExportNoticeTimerRef.current) {
+      window.clearTimeout(pdfExportNoticeTimerRef.current);
+      pdfExportNoticeTimerRef.current = null;
+    }
     setPdfExportNotice(null);
 
     if (hasUnsavedChanges) {
@@ -376,6 +386,10 @@ export function WorkspaceShell() {
   async function handleExportPdfClick() {
     setIsFileMenuOpen(false);
     setPdfImportError(null);
+    if (pdfExportNoticeTimerRef.current) {
+      window.clearTimeout(pdfExportNoticeTimerRef.current);
+      pdfExportNoticeTimerRef.current = null;
+    }
     setPdfExportNotice(null);
 
     const exportTitle = noteTitle.trim() || "Untitled Note";
@@ -402,6 +416,10 @@ export function WorkspaceShell() {
       const pdfBytes = await createWorkspacePdf(exportTitle, editorContent);
       await writeFile(ensurePdfExtension(selectedPath), pdfBytes);
       setPdfExportNotice("PDF exported successfully.");
+      pdfExportNoticeTimerRef.current = window.setTimeout(() => {
+        setPdfExportNotice(null);
+        pdfExportNoticeTimerRef.current = null;
+      }, 2500);
     } catch (error) {
       console.error("PDF export failed", error);
       setPdfExportNotice("Could not export this note as a PDF.");
@@ -723,20 +741,23 @@ export function WorkspaceShell() {
           </div>
         ) : null}
 
-        <div className="flex min-h-7 items-center justify-end gap-2 border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
-          <span>{formatStatusDate(statusDate)}</span>
-          <span>·</span>
-          <span>{formatStatusTime(statusDate)}</span>
-          <span>·</span>
-          <span
-            className={
-              workspaceStatus !== "Saved"
-                ? "font-medium text-[var(--foreground)]"
-                : undefined
-            }
-          >
-            {workspaceStatus}
-          </span>
+        <div className="flex min-h-7 items-center justify-between border-t border-[var(--border)] px-6 text-xs text-[var(--muted-foreground)]">
+          <span>CN Characters: {chineseCharacterCount}</span>
+          <div className="flex items-center gap-2">
+            <span>{formatStatusDate(statusDate)}</span>
+            <span>·</span>
+            <span>{formatStatusTime(statusDate)}</span>
+            <span>·</span>
+            <span
+              className={
+                workspaceStatus !== "Saved"
+                  ? "font-medium text-[var(--foreground)]"
+                  : undefined
+              }
+            >
+              {workspaceStatus}
+            </span>
+          </div>
         </div>
       </div>
 

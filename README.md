@@ -2,72 +2,52 @@
 
 v0.1.0
 
-MadsChinese is a desktop application for learning Chinese through reading.
+MadsChinese is a desktop app for Chinese reading practice.
 
-Paste, type, or import Chinese text into the workspace and hover over words to instantly view pinyin and English definitions. Everything runs locally on your machine for a fast, offline-friendly study experience.
-Make notes and save them for later. Import/Export PDF with chinese selectable characters.
+Paste, type, or import text into the workspace. Hover over Chinese words to see pinyin and English definitions. Save notes when you want to keep your work.
 
 ## Features
 
-### Dictionary Lookup
+### Dictionary
 
-* Instant hover dictionary lookup
-* Offline Chinese-English dictionary
-* Pinyin with tone colors
-* Multi-character word matching
+* Hover over Chinese words to view definitions.
+* See pinyin with fixed tone colors.
+* Look up multi-character words.
+* Use the dictionary offline.
 
-Tone colors follow a fixed scheme:
+Tone colors:
 
-* First tone → Red
-* Second tone → Orange
-* Third tone → Green
-* Fourth tone → Blue
-* Neutral tone → Gray
+* First tone - red
+* Second tone - orange
+* Third tone - green
+* Fourth tone - blue
+* Neutral tone - gray
 
 ### Notes
 
-* Create and save study notes
-* Search saved notes
-* Persistent note library
+* Create study notes.
+* Save notes for later.
+* Search saved notes.
+* Restore unsaved work when the app starts again.
 
-### PDF Support
+### PDF
 
-* Import text-based PDF documents
-* Extract Chinese and English text into the workspace
-* Continue studying imported content
-* Export workspace content to PDF
+* Import text-based PDFs.
+* Extract Chinese and English text into the workspace.
+* Export the current workspace as a PDF.
 
 ### Themes
 
-* Multiple built-in themes
-* Theme-aware workspace and dictionary popup
-* Consistent tone colors across themes
+* Choose from built-in themes.
+* Keep tone colors consistent across themes.
+* Use a theme-aware workspace and dictionary popup.
 
-### Quality of Life
+## Shortcuts
 
-* Unsaved-change protection
-* Keyboard shortcuts
-
-## Keyboard Shortcuts
-
-| Shortcut     | Action    |
-| ------------ | --------- |
+| Shortcut | Action |
+| --- | --- |
 | Ctrl/Cmd + S | Save note |
-| Ctrl/Cmd + T | New note  |
-
-## Future Updates
-
-* PDF OCR support
-* Vocabulary collection
-* Saved vocabulary lists
-* Reading statistics
-* AI summaries
-
----
-
-Built with Vite, React, TypeScript, Tailwind CSS, and Tauri.
-
----
+| Ctrl/Cmd + T | New note |
 
 ## Acknowledgements
 
